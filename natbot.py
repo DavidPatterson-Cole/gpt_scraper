@@ -21,9 +21,9 @@ import os
 # import operator
 # import platform
 # import sys
-import uuid
+# import uuid
 # from functools import reduce
-from time import sleep
+# from time import sleep
 
 quiet = False
 if len(argv) >= 2:
@@ -160,218 +160,220 @@ black_listed_elements = set(["html", "head", "title", "meta", "iframe", "body", 
 
 class Crawler:
 
-	session_div_id = "chatgpt-wrapper-session-data"
+	# session_div_id = "chatgpt-wrapper-session-data"
 
 	def __init__(self):
 		self.browser = (
-      # async_playwright()
-      # .start()
-			# .chromium.launch(headless=False)
-			# self.context = self.browser.new_context()
-			# self.page = self.context.new_page()
+      sync_playwright()
+      .start()
+			.chromium.launch(headless=False)
 
 			# Attempted to swith to Firefox but it doesn't work because of the CDP thing
-			sync_playwright()
-			.start()
-			.firefox.launch_persistent_context(
-        user_data_dir="/tmp/playwright",
-				headless=True,
-			)
+			# sync_playwright()
+			# .start()
+			# .firefox.launch_persistent_context(
+      #   user_data_dir="/tmp/playwright",
+			# 	headless=True,
+			# )
 		)
-		self.session = None
-		self.parent_message_id = str(uuid.uuid4())
-		self.conversation_id = None
-		self.page = self.browser.new_page()
-		self.page.set_viewport_size({"width": 1280, "height": 1080})
+
+		self.context = self.browser.new_context()
+		self.page = self.context.new_page()
+
+		# self.session = None
+		# self.parent_message_id = str(uuid.uuid4())
+		# self.conversation_id = None
+		# self.page = self.browser.new_page()
+		# self.page.set_viewport_size({"width": 1280, "height": 1080})
   
 	# Added this 
-	def new_tab(self):
+	# def new_tab(self):
 		# self.page2 = self.browser.play.launch_persistent_context(
     #         user_data_dir="/tmp/playwright",
     #         headless=headless,
     #     )
-		self.page2 = self.browser.new_page()
-		self.page2.goto("https://chat.openai.com/")
+		# self.page2 = self.browser.new_page()
+		# self.page2.goto("https://chat.openai.com/")
 
-	def refresh_session(self):
-			self.page2.evaluate(
-				"""
-				const xhr = new XMLHttpRequest();
-				xhr.open('GET', 'https://chat.openai.com/api/auth/session');
-				xhr.onload = () => {
-					if(xhr.status == 200) {
-						var mydiv = document.createElement('DIV');
-						mydiv.id = "SESSION_DIV_ID"
-						mydiv.innerHTML = xhr.responseText;
-						document.body.appendChild(mydiv);
-					}
-				};
-				xhr.send();
-				""".replace(
-					"SESSION_DIV_ID", self.session_div_id
-				)
-			)
+	# def refresh_session(self):
+	# 		self.page2.evaluate(
+	# 			"""
+	# 			const xhr = new XMLHttpRequest();
+	# 			xhr.open('GET', 'https://chat.openai.com/api/auth/session');
+	# 			xhr.onload = () => {
+	# 				if(xhr.status == 200) {
+	# 					var mydiv = document.createElement('DIV');
+	# 					mydiv.id = "SESSION_DIV_ID"
+	# 					mydiv.innerHTML = xhr.responseText;
+	# 					document.body.appendChild(mydiv);
+	# 				}
+	# 			};
+	# 			xhr.send();
+	# 			""".replace(
+	# 				"SESSION_DIV_ID", self.session_div_id
+	# 			)
+	# 		)
 
-			while True:
-				print('session div:', self.session_div_id)
-				session_datas = self.page2.query_selector_all(f"div#{self.session_div_id}")
-				if len(session_datas) > 0:
-					break
-				sleep(0.2)
+	# 		while True:
+	# 			print('session div:', self.session_div_id)
+	# 			session_datas = self.page2.query_selector_all(f"div#{self.session_div_id}")
+	# 			if len(session_datas) > 0:
+	# 				break
+	# 			sleep(0.2)
 
-			session_data = json.loads(session_datas[0].inner_text())
-			self.session = session_data
+	# 		session_data = json.loads(session_datas[0].inner_text())
+	# 		self.session = session_data
 
-			self.page2.evaluate(f"document.getElementById('{self.session_div_id}').remove()")
+	# 		self.page2.evaluate(f"document.getElementById('{self.session_div_id}').remove()")
 
-	def _cleanup_divs(self):
-		self.page2.evaluate(f"document.getElementById('{self.stream_div_id}').remove()")
-		self.page2.evaluate(f"document.getElementById('{self.eof_div_id}').remove()")
+	# def _cleanup_divs(self):
+	# 	self.page2.evaluate(f"document.getElementById('{self.stream_div_id}').remove()")
+	# 	self.page2.evaluate(f"document.getElementById('{self.eof_div_id}').remove()")
 
-	def ask_stream(self, prompt: str):
-		if self.session is None:
-			self.refresh_session()
-		print('made it here')
-		new_message_id = str(uuid.uuid4())
-		if "accessToken" not in self.session:
-			yield (
-				"Your ChatGPT session is not usable.\n"
-				"* Run this program with the `install` parameter and log in to ChatGPT.\n"
-				"* If you think you are already logged in, try running the `session` command."
-			)
-			return
+	# def ask_stream(self, prompt: str):
+	# 	if self.session is None:
+	# 		self.refresh_session()
+	# 	print('made it here')
+	# 	new_message_id = str(uuid.uuid4())
+	# 	if "accessToken" not in self.session:
+	# 		yield (
+	# 			"Your ChatGPT session is not usable.\n"
+	# 			"* Run this program with the `install` parameter and log in to ChatGPT.\n"
+	# 			"* If you think you are already logged in, try running the `session` command."
+	# 		)
+	# 		return
 
-		request = {
-			"messages": [
-				{
-					"id": new_message_id,
-					"role": "user",
-					"content": {"content_type": "text", "parts": [prompt]},
-				}
-			],
-			"model": "text-davinci-002-render",
-			"conversation_id": self.conversation_id,
-			"parent_message_id": self.parent_message_id,
-			"action": "next",
-		}
+	# 	request = {
+	# 		"messages": [
+	# 			{
+	# 				"id": new_message_id,
+	# 				"role": "user",
+	# 				"content": {"content_type": "text", "parts": [prompt]},
+	# 			}
+	# 		],
+	# 		"model": "text-davinci-002-render",
+	# 		"conversation_id": self.conversation_id,
+	# 		"parent_message_id": self.parent_message_id,
+	# 		"action": "next",
+	# 	}
 
-		code = (
-			"""
-			const stream_div = document.createElement('DIV');
-			stream_div.id = "STREAM_DIV_ID";
-			document.body.appendChild(stream_div);
-			const xhr = new XMLHttpRequest();
-			xhr.open('POST', 'https://chat.openai.com/backend-api/conversation');
-			xhr.setRequestHeader('Accept', 'text/event-stream');
-			xhr.setRequestHeader('Content-Type', 'application/json');
-			xhr.setRequestHeader('Authorization', 'Bearer BEARER_TOKEN');
-			xhr.responseType = 'stream';
-			xhr.onreadystatechange = function() {
-				var newEvent;
-				if(xhr.readyState == 3 || xhr.readyState == 4) {
-					const newData = xhr.response.substr(xhr.seenBytes);
-					try {
-						const newEvents = newData.split(/\\n\\n/).reverse();
-						newEvents.shift();
-						if(newEvents[0] == "data: [DONE]") {
-							newEvents.shift();
-						}
-						if(newEvents.length > 0) {
-							newEvent = newEvents[0].substring(6);
-							// using XHR for eventstream sucks and occasionally ive seen incomplete
-							// json objects come through  JSON.parse will throw if that happens, and
-							// that should just skip until we get a full response.
-							JSON.parse(newEvent);
-						}
-					} catch (err) {
-						console.log(err);
-						return;
-					}
-					if(newEvent !== undefined) {
-						stream_div.innerHTML = btoa(newEvent);
-						xhr.seenBytes = xhr.responseText.length;
-					}
-				}
-				if(xhr.readyState == 4) {
-					const eof_div = document.createElement('DIV');
-					eof_div.id = "EOF_DIV_ID";
-					document.body.appendChild(eof_div);
-				}
-			};
-			xhr.send(JSON.stringify(REQUEST_JSON));
-			""".replace(
-				"BEARER_TOKEN", self.session["accessToken"]
-			)
-			.replace("REQUEST_JSON", json.dumps(request))
-			.replace("STREAM_DIV_ID", self.stream_div_id)
-			.replace("EOF_DIV_ID", self.eof_div_id)
-		)
+	# 	code = (
+	# 		"""
+	# 		const stream_div = document.createElement('DIV');
+	# 		stream_div.id = "STREAM_DIV_ID";
+	# 		document.body.appendChild(stream_div);
+	# 		const xhr = new XMLHttpRequest();
+	# 		xhr.open('POST', 'https://chat.openai.com/backend-api/conversation');
+	# 		xhr.setRequestHeader('Accept', 'text/event-stream');
+	# 		xhr.setRequestHeader('Content-Type', 'application/json');
+	# 		xhr.setRequestHeader('Authorization', 'Bearer BEARER_TOKEN');
+	# 		xhr.responseType = 'stream';
+	# 		xhr.onreadystatechange = function() {
+	# 			var newEvent;
+	# 			if(xhr.readyState == 3 || xhr.readyState == 4) {
+	# 				const newData = xhr.response.substr(xhr.seenBytes);
+	# 				try {
+	# 					const newEvents = newData.split(/\\n\\n/).reverse();
+	# 					newEvents.shift();
+	# 					if(newEvents[0] == "data: [DONE]") {
+	# 						newEvents.shift();
+	# 					}
+	# 					if(newEvents.length > 0) {
+	# 						newEvent = newEvents[0].substring(6);
+	# 						// using XHR for eventstream sucks and occasionally ive seen incomplete
+	# 						// json objects come through  JSON.parse will throw if that happens, and
+	# 						// that should just skip until we get a full response.
+	# 						JSON.parse(newEvent);
+	# 					}
+	# 				} catch (err) {
+	# 					console.log(err);
+	# 					return;
+	# 				}
+	# 				if(newEvent !== undefined) {
+	# 					stream_div.innerHTML = btoa(newEvent);
+	# 					xhr.seenBytes = xhr.responseText.length;
+	# 				}
+	# 			}
+	# 			if(xhr.readyState == 4) {
+	# 				const eof_div = document.createElement('DIV');
+	# 				eof_div.id = "EOF_DIV_ID";
+	# 				document.body.appendChild(eof_div);
+	# 			}
+	# 		};
+	# 		xhr.send(JSON.stringify(REQUEST_JSON));
+	# 		""".replace(
+	# 			"BEARER_TOKEN", self.session["accessToken"]
+	# 		)
+	# 		.replace("REQUEST_JSON", json.dumps(request))
+	# 		.replace("STREAM_DIV_ID", self.stream_div_id)
+	# 		.replace("EOF_DIV_ID", self.eof_div_id)
+	# 	)
 
-		self.page2.evaluate(code)
+	# 	self.page2.evaluate(code)
 
-		last_event_msg = ""
-		while True:
-			eof_datas = self.page2.query_selector_all(f"div#{self.eof_div_id}")
-			conversation_datas = self.page2.query_selector_all(
-				f"div#{self.stream_div_id}"
-			)
-			if len(conversation_datas) == 0:
-				continue
+	# 	last_event_msg = ""
+	# 	while True:
+	# 		eof_datas = self.page2.query_selector_all(f"div#{self.eof_div_id}")
+	# 		conversation_datas = self.page2.query_selector_all(
+	# 			f"div#{self.stream_div_id}"
+	# 		)
+	# 		if len(conversation_datas) == 0:
+	# 			continue
 			
-			full_event_message = None
+	# 		full_event_message = None
 			
-			try:
-				event_raw = base64.b64decode(conversation_datas[0].inner_html())
-				if len(event_raw) > 0:
-					event = json.loads(event_raw)
-					if event is not None:
-						self.parent_message_id = event["message"]["id"]
-						self.conversation_id = event["conversation_id"]
-						full_event_message = "\n".join(
-							event["message"]["content"]["parts"]
-						)
-			except Exception:
-				yield (
-					"Failed to read response from ChatGPT.  Tips:\n"
-					" * Try again.  ChatGPT can be flaky.\n"
-					" * Use the `session` command to refresh your session, and then try again.\n"
-					" * Restart the program in the `install` mode and make sure you are logged in."
-				)
-				break
+	# 		try:
+	# 			event_raw = base64.b64decode(conversation_datas[0].inner_html())
+	# 			if len(event_raw) > 0:
+	# 				event = json.loads(event_raw)
+	# 				if event is not None:
+	# 					self.parent_message_id = event["message"]["id"]
+	# 					self.conversation_id = event["conversation_id"]
+	# 					full_event_message = "\n".join(
+	# 						event["message"]["content"]["parts"]
+	# 					)
+	# 		except Exception:
+	# 			yield (
+	# 				"Failed to read response from ChatGPT.  Tips:\n"
+	# 				" * Try again.  ChatGPT can be flaky.\n"
+	# 				" * Use the `session` command to refresh your session, and then try again.\n"
+	# 				" * Restart the program in the `install` mode and make sure you are logged in."
+	# 			)
+	# 			break
 
-			if full_event_message is not None:
-				chunk = full_event_message[len(last_event_msg) :]
-				last_event_msg = full_event_message
-				yield chunk
+	# 		if full_event_message is not None:
+	# 			chunk = full_event_message[len(last_event_msg) :]
+	# 			last_event_msg = full_event_message
+	# 			yield chunk
 
-			# if we saw the eof signal, this was the last event we
-			# # should process and we are done
-			if len(eof_datas) > 0:
-				break
+	# 		# if we saw the eof signal, this was the last event we
+	# 		# # should process and we are done
+	# 		if len(eof_datas) > 0:
+	# 			break
 
-			sleep(0.2)
+	# 		sleep(0.2)
 
-		self._cleanup_divs()
+	# 	self._cleanup_divs()
 
-	def ask(self, message: str) -> str:
-		"""
-		Send a message to chatGPT and return the response.
-		Args:
-			message (str): The message to send.
-		Returns:
-			str: The response received from OpenAI.
-		"""
-		print('In the ask function')
-		response = list(self.ask_stream(message))
-		return (
-			reduce(operator.add, response)
-			if len(response) > 0
-			else "Unusable response produced by ChatGPT, maybe its unavailable."
-		)
+	# def ask(self, message: str) -> str:
+	# 	"""
+	# 	Send a message to chatGPT and return the response.
+	# 	Args:
+	# 		message (str): The message to send.
+	# 	Returns:
+	# 		str: The response received from OpenAI.
+	# 	"""
+	# 	print('In the ask function')
+	# 	response = list(self.ask_stream(message))
+	# 	return (
+	# 		reduce(operator.add, response)
+	# 		if len(response) > 0
+	# 		else "Unusable response produced by ChatGPT, maybe its unavailable."
+	# 	)
 
-	def new_conversation(self):
-		self.parent_message_id = str(uuid.uuid4())
-		self.conversation_id = None
+	# def new_conversation(self):
+	# 	self.parent_message_id = str(uuid.uuid4())
+	# 	self.conversation_id = None
 
 # --------------------------------------------------------------------------------
 
@@ -745,7 +747,7 @@ if (
 	__name__ == "__main__"
 ):
 	_crawler = Crawler()
-	openai.api_key = "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"
+	openai.api_key = "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"
 
 	def print_help():
 		print(
@@ -759,19 +761,19 @@ if (
 		prompt = prompt.replace("$url", url[:100])
 		prompt = prompt.replace("$previous_command", previous_command)
 		prompt = prompt.replace("$browser_content", browser_content[:4500])
-		print('A new tab should have opened')
-		_crawler.new_tab()
+		# print('A new tab should have opened')
+		# _crawler.new_tab()
 		# placeholder while trying to get chatgpt to give a response
-		response = _crawler.ask('who is King Louis 7th?')
-		print('Response here: ', response)
-		# response = openai.Completion.create(model="text-davinci-002", prompt=prompt, temperature=0.5, best_of=10, n=3, max_tokens=50)
+		# response = _crawler.ask('who is King Louis 7th?')
+		# print('Response here: ', response)
+		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=10, n=3, max_tokens=50)
 		# bot = ChatGPT()
 		# response = bot.ask('is New York state richer than California?')
 		# print(response)
 		# response = subprocess.run("chatgpt", "is New York state richer than California?", "dirB")
 		# print ('response: ', response.choices[0].text)
-		# return response.choices[0].text
-		return 'temp'
+		return response.choices[0].text
+		# return 'temp'
 
 	def run_cmd(cmd):
 		cmd = cmd.split("\n")[0]
