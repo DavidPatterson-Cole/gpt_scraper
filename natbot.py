@@ -34,6 +34,10 @@ if len(argv) >= 2:
 			+ "exercise caution when running suggested commands."
 		)
 
+	# (4) an answer array to store your answers to the objectives after each step you take
+	# Before you issue a command, look at the browser content and provide YOUR TEMPORARY ANSWER which is your best guess at the answer to the objective. Then, based on your given objective, issue whatever command you believe will get you closest to achieving your goal.
+
+
 prompt_template = """
 You are an agent controlling a browser. You are given:
 	(1) an objective that you are trying to achieve
@@ -45,7 +49,7 @@ You can issue these commands:
 	CLICK X - click on a given element. You can only click on links, buttons, and inputs!
 	TYPE X "TEXT" - type the specified text into the input with id X
 	TYPESUBMIT X "TEXT" - same as TYPE above, except then it presses ENTER to submit the form
-  ANSWER "TEXT" - print out the specified text which answers the objective
+
 The format of the browser content is highly simplified; all formatting elements are stripped.
 Interactive elements such as links, inputs, buttons are represented like this:
 		<link id=1>text</link>
@@ -53,7 +57,11 @@ Interactive elements such as links, inputs, buttons are represented like this:
 		<input id=3>text</input>
 Images are rendered as their alt text like this:
 		<img id=4 alt=""/>
-Based on your given objective, issue whatever command you believe will get you closest to achieving your goal.
+
+Your answer to this prompt should be formated as a numbered list with 2 items and always include the following:
+	1. a command that you would issue to the browser (as outlined above) to get you closer to achieving your objective
+	2. a temporary answer to the objective which is the best possible answer you can provide based on the current browser content
+
 You always start on Google; you should submit a search query to Google that will take you to the best page for
 achieving your objective. And then interact with that page to achieve your objective.
 If you find yourself on Google and there are no search results displayed yet, you should probably issue a command 
@@ -89,7 +97,8 @@ CURRENT BROWSER CONTENT:
 OBJECTIVE: Find a 2 bedroom house for sale in Anchorage AK for under $750k
 CURRENT URL: https://www.google.com/
 YOUR COMMAND: 
-TYPESUBMIT 8 "anchorage redfin"
+1. TYPESUBMIT 8 "anchorage redfin"
+2. Here is the link to a 2 bedroom house for sale in Anchorage: https://www.redfin.com/city/1000/AK/Anchorage
 ==================================================
 EXAMPLE 2:
 ==================================================
@@ -114,36 +123,12 @@ CURRENT BROWSER CONTENT:
 <link id=17>Terms</link>
 <text id=18>Settings</text>
 ------------------
-OBJECTIVE: Make a reservation for 4 at Dorsia at 8pm
+OBJECTIVE: Find a reservation for 4 at Dorsia at 8pm
 CURRENT URL: https://www.google.com/
 YOUR COMMAND: 
-TYPESUBMIT 8 "dorsia nyc opentable"
-==================================================
-EXAMPLE 3:
-==================================================
-CURRENT BROWSER CONTENT:
-------------------
-<button id=1>For Businesses</button>
-<button id=2>Mobile</button>
-<button id=3>Help</button>
-<button id=4 alt="Language Picker">EN</button>
-<link id=5>OpenTable logo</link>
-<button id=6 alt ="search">Search</button>
-<text id=7>Find your table for any occasion</text>
-<button id=8>(Date selector)</button>
-<text id=9>Sep 28, 2022</text>
-<text id=10>7:00 PM</text>
-<text id=11>2 people</text>
-<input id=12 alt="Location, Restaurant, or Cuisine"></input> 
-<button id=13>Let’s go</button>
-<text id=14>It looks like you're in Peninsula. Not correct?</text> 
-<button id=15>Get current location</button>
-<button id=16>Next</button>
-------------------
-OBJECTIVE: Make a reservation for 4 for dinner at Dorsia in New York City at 8pm
-CURRENT URL: https://www.opentable.com/
-YOUR COMMAND: 
-TYPESUBMIT 12 "dorsia new york city"
+1. TYPESUBMIT 8 "dorsia nyc opentable"
+2. Here is a link to the opentable reservation page with availability for Dorsia at 8pm: https://www.opentable.com/r/dorsia-new-york?dateTime=2022-09-28T20%3A00%3A00&covers=4&dateTime=2022-09-28T20%3A00%3A00&covers=4
+
 ==================================================
 The current browser content, objective, and current URL follow. Reply with your next command to the browser.
 CURRENT BROWSER CONTENT:
@@ -760,19 +745,20 @@ if (
 		prompt = prompt.replace("$objective", objective)
 		prompt = prompt.replace("$url", url[:100])
 		prompt = prompt.replace("$previous_command", previous_command)
-		prompt = prompt.replace("$browser_content", browser_content[:4500])
+		prompt = prompt.replace("$browser_content", browser_content[:20000])
 		# print('A new tab should have opened')
 		# _crawler.new_tab()
 		# placeholder while trying to get chatgpt to give a response
 		# response = _crawler.ask('who is King Louis 7th?')
-		# print('Response here: ', response)
-		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=10, n=3, max_tokens=50)
+		print('Prompt here: ', prompt)
+		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=2, max_tokens=250)
 		# bot = ChatGPT()
 		# response = bot.ask('is New York state richer than California?')
 		# print(response)
 		# response = subprocess.run("chatgpt", "is New York state richer than California?", "dirB")
-		# print ('response: ', response.choices[0].text)
-		return response.choices[0].text
+		print ('responses: ', response.choices)
+		action_response = response.choices[0].text.split('1.')[1].split('2.')[0]
+		return action_response
 		# return 'temp'
 
 	def run_cmd(cmd):
