@@ -39,16 +39,11 @@ if len(argv) >= 2:
 
 
 prompt_template = """
-You are an agent controlling a browser. You are given:
-	(1) an objective that you are trying to achieve
-	(2) the URL of your current web page
-	(3) a simplified text description of what's visible in the browser window (more on that below)
-You can issue these commands:
-	SCROLL UP - scroll up one page
-	SCROLL DOWN - scroll down one page
-	CLICK X - click on a given element. You can only click on links, buttons, and inputs!
-	TYPE X "TEXT" - type the specified text into the input with id X
-	TYPESUBMIT X "TEXT" - same as TYPE above, except then it presses ENTER to submit the form
+You have been given:
+	(1) a question that you are trying to answer
+	(2) a simplified text description of what's visible in the browser window (more on that below)
+
+You should answer the question based on the browser content.
 
 The format of the browser content is highly simplified; all formatting elements are stripped.
 Interactive elements such as links, inputs, buttons are represented like this:
@@ -58,87 +53,77 @@ Interactive elements such as links, inputs, buttons are represented like this:
 Images are rendered as their alt text like this:
 		<img id=4 alt=""/>
 
-Your answer to this prompt should be formated as a numbered list with 2 items and always include the following:
-	1. a command that you would issue to the browser (as outlined above) to get you closer to achieving your objective
-	2. a temporary answer to the objective which is the best possible answer you can provide based on the current browser content
-
-You always start on Google; you should submit a search query to Google that will take you to the best page for
-achieving your objective. And then interact with that page to achieve your objective.
-If you find yourself on Google and there are no search results displayed yet, you should probably issue a command 
-like "TYPESUBMIT 7 "search query"" to get to a more useful page.
-Then, if you find yourself on a Google search results page, you might issue the command "CLICK 24" to click
-on the first link in the search results. (If your previous command was a TYPESUBMIT your next command should
-probably be a CLICK.)
-Don't try to interact with elements that you can't see.
 Here are some examples:
 EXAMPLE 1:
 ==================================================
 CURRENT BROWSER CONTENT:
 ------------------
-<link id=1>About</link>
-<link id=2>Store</link>
-<link id=3>Gmail</link>
-<link id=4>Images</link>
-<link id=5>(Google apps)</link>
-<link id=6>Sign in</link>
-<img id=7 alt="(Google)"/>
-<input id=8 alt="Search"></input>
-<button id=9>(Search by voice)</button>
-<button id=10>(Google Search)</button>
-<button id=11>(I'm Feeling Lucky)</button>
-<link id=12>Advertising</link>
-<link id=13>Business</link>
-<link id=14>How Search works</link>
-<link id=15>Carbon neutral since 2007</link>
-<link id=16>Privacy</link>
-<link id=17>Terms</link>
-<text id=18>Settings</text>
+<button id=0 Accessibility Menu/>
+<img id=1 Open the Accessibility Menu/>
+<link id=2>Skip to main content</link>
+<link id=3>Contact Us</link>
+<link id=4>Quick Links</link>
+<link id=5>Staff Directory</link>
+<text id=6>Powered by</text>
+<link id=7 alt="Google Translate">Translate</link>
+<link id=8 alt="Brookfield High School"/>
+<link id=9>Our Schools</link>
+<link id=10>About Us</link>
+<link id=11>Academics</link>
+<link id=12>Faculty / Staff</link>
+<link id=13>Family</link>
+<link id=14>Students</link>
+<link id=15>Search</link>
+<link id=16 title="Display a printer-friendly version of this page."/>
+<link id=17 alt="Share page with AddThis"/>
+<text id=18>You are here</text>
+<link id=19>Home</link>
+<text id=20>››</text>
+<link id=21>Brookfield High School</link>
+<text id=22>Brookfield High School Staff Directory</text>
+<text id=23>Other Directories</text>
+<link id=24>District</link>
+<text id=25>|</text>
+<link id=26>Whisconier Middle School</link>
+<text id=27>|</text>
+<link id=28>Huckleberry Hill Elementary School</link>
+<text id=29>|</text>
+<link id=30>Center Elementary School</link>
+<link id=31>Administration</link>
+<text id=32>Name</text>
+<text id=33>Title</text>
+<text id=34>Phone</text>
+<text id=35>Website</text>
+<link id=36>Marc Balanda</link>
+<text id=37>Principal</text>
+<text id=38>(203) 775-7725 ext. 7730</text>
+<link id=39>Susan Griffin</link>
+<text id=40>(grades 10 & 12)</text>
+<text id=41>Assistant Principal</text>
+<text id=42>(203) 775-7725 ext. 7733</text>
+<link id=43>Jules Scheithe</link>
+<text id=44>(grades 9 & 11)</text>
+<text id=45>Assistant Principal</text>
+<text id=46>(203) 775-7725 ext. 7760</text>
+<text id=47>Administrative Support Staff</text>
+<text id=48>Name</text>
+<text id=49>Title</text>
+<text id=50>Phone</text>
+<text id=51>Website</text>
+<link id=52>Carol Ann D'Arcangelo</link>
+<text id=53>Administrative Secretary to the Principal</text>
+<text id=54>(203) 775-7725 ext. 7731</text>
 ------------------
-OBJECTIVE: Find a 2 bedroom house for sale in Anchorage AK for under $750k
-CURRENT URL: https://www.google.com/
-YOUR COMMAND: 
-1. TYPESUBMIT 8 "anchorage redfin"
-2. Here is the link to a 2 bedroom house for sale in Anchorage: https://www.redfin.com/city/1000/AK/Anchorage
-==================================================
-EXAMPLE 2:
-==================================================
-CURRENT BROWSER CONTENT:
-------------------
-<link id=1>About</link>
-<link id=2>Store</link>
-<link id=3>Gmail</link>
-<link id=4>Images</link>
-<link id=5>(Google apps)</link>
-<link id=6>Sign in</link>
-<img id=7 alt="(Google)"/>
-<input id=8 alt="Search"></input>
-<button id=9>(Search by voice)</button>
-<button id=10>(Google Search)</button>
-<button id=11>(I'm Feeling Lucky)</button>
-<link id=12>Advertising</link>
-<link id=13>Business</link>
-<link id=14>How Search works</link>
-<link id=15>Carbon neutral since 2007</link>
-<link id=16>Privacy</link>
-<link id=17>Terms</link>
-<text id=18>Settings</text>
-------------------
-OBJECTIVE: Find a reservation for 4 at Dorsia at 8pm
-CURRENT URL: https://www.google.com/
-YOUR COMMAND: 
-1. TYPESUBMIT 8 "dorsia nyc opentable"
-2. Here is a link to the opentable reservation page with availability for Dorsia at 8pm: https://www.opentable.com/r/dorsia-new-york?dateTime=2022-09-28T20%3A00%3A00&covers=4&dateTime=2022-09-28T20%3A00%3A00&covers=4
+QUESTION: Who is the secretary to the principal?
+YOUR ANSWER: Carol Ann D'Arcangelo
 
-==================================================
-The current browser content, objective, and current URL follow. Reply with your next command to the browser.
+The current browser content, the question you are answering follow. Reply with your answer.
 CURRENT BROWSER CONTENT:
 ------------------
 $browser_content
 ------------------
-OBJECTIVE: $objective
-CURRENT URL: $url
-PREVIOUS COMMAND: $previous_command
-YOUR COMMAND:
+QUESTION: $question
+YOUR ANSWER:
 """
 
 black_listed_elements = set(["html", "head", "title", "meta", "iframe", "body", "script", "style", "path", "svg", "br", "::marker",])
@@ -403,9 +388,11 @@ class Crawler:
 	def enter(self):
 		self.page.keyboard.press("Enter")
 
-	def crawl(self):
+	def crawl(self, url):
+		Crawler.go_to_page(self, url)
 		page = self.page
-		page_element_buffer = self.page_element_buffer
+		client = page.context.new_cdp_session(self.page)
+		page_element_buffer = {}
 		start = time.time()
 
 		page_state_as_text = []
@@ -442,7 +429,7 @@ class Crawler:
 			}
 		)
 
-		tree = self.client.send(
+		tree = client.send(
 			"DOMSnapshot.captureSnapshot",
 			{"computedStyles": [], "includeDOMRects": True, "includePaintOrder": True},
 		)
@@ -562,26 +549,26 @@ class Crawler:
 			if node_name in black_listed_elements:
 				continue
 
-			[x, y, width, height] = bounds[cursor]
-			x /= device_pixel_ratio
-			y /= device_pixel_ratio
-			width /= device_pixel_ratio
-			height /= device_pixel_ratio
+			# [x, y, width, height] = bounds[cursor]
+			# x /= device_pixel_ratio
+			# y /= device_pixel_ratio
+			# width /= device_pixel_ratio
+			# height /= device_pixel_ratio
 
-			elem_left_bound = x
-			elem_top_bound = y
-			elem_right_bound = x + width
-			elem_lower_bound = y + height
+			# elem_left_bound = x
+			# elem_top_bound = y
+			# elem_right_bound = x + width
+			# elem_lower_bound = y + height
 
-			partially_is_in_viewport = (
-				elem_left_bound < win_right_bound
-				and elem_right_bound >= win_left_bound
-				and elem_top_bound < win_lower_bound
-				and elem_lower_bound >= win_upper_bound
-			)
+			# partially_is_in_viewport = (
+			# 	elem_left_bound < win_right_bound
+			# 	and elem_right_bound >= win_left_bound
+			# 	and elem_top_bound < win_lower_bound
+			# 	and elem_lower_bound >= win_upper_bound
+			# )
 
-			if not partially_is_in_viewport:
-				continue
+			# if not partially_is_in_viewport:
+			# 	continue
 
 			meta_data = []
 
@@ -658,10 +645,10 @@ class Crawler:
 					"node_value": element_node_value,
 					"node_meta": meta_data,
 					"is_clickable": index in is_clickable,
-					"origin_x": int(x),
-					"origin_y": int(y),
-					"center_x": int(x + (width / 2)),
-					"center_y": int(y + (height / 2)),
+					# "origin_x": int(x),
+					# "origin_y": int(y),
+					# "center_x": int(x + (width / 2)),
+					# "center_y": int(y + (height / 2)),
 				}
 			)
 
@@ -732,7 +719,63 @@ if (
 	__name__ == "__main__"
 ):
 	_crawler = Crawler()
-	openai.api_key = "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"
+	temp_contents = """
+	<button id=0 Accessibility Menu/>
+	<img id=1 Open the Accessibility Menu/>
+	<link id=2>Skip to main content</link>
+	<link id=3>Contact Us</link>
+	<link id=4>Quick Links</link>
+	<link id=5>Staff Directory</link>
+	<text id=6>Powered by</text>
+	<link id=7 alt="Google Translate">Translate</link>
+	<link id=8 alt="Brookfield High School"/>
+	<link id=9>Our Schools</link>
+	<link id=10>About Us</link>
+	<link id=11>Academics</link>
+	<link id=12>Faculty / Staff</link>
+	<link id=13>Family</link>
+	<link id=14>Students</link>
+	<link id=15>Search</link>
+	<link id=16 title="Display a printer-friendly version of this page."/>
+	<link id=17 alt="Share page with AddThis"/>
+	<text id=18>You are here</text>
+	<link id=19>Home</link>
+	<text id=20>››</text>
+	<link id=21>Brookfield High School</link>
+	<text id=22>Brookfield High School Staff Directory</text>
+	<text id=23>Other Directories</text>
+	<link id=24>District</link>
+	<text id=25>|</text>
+	<link id=26>Whisconier Middle School</link>
+	<text id=27>|</text>
+	<link id=28>Huckleberry Hill Elementary School</link>
+	<text id=29>|</text>
+	<link id=30>Center Elementary School</link>
+	<link id=31>Administration</link>
+	<text id=32>Name</text>
+	<text id=33>Title</text>
+	<text id=34>Phone</text>
+	<text id=35>Website</text>
+	<link id=36>Marc Balanda</link>
+	<text id=37>Principal</text>
+	<text id=38>(203) 775-7725 ext. 7730</text>
+	<link id=39>Susan Griffin</link>
+	<text id=40>(grades 10 & 12)</text>
+	<text id=41>Assistant Principal</text>
+	<text id=42>(203) 775-7725 ext. 7733</text>
+	<link id=43>Jules Scheithe</link>
+	<text id=44>(grades 9 & 11)</text>
+	<text id=45>Assistant Principal</text>
+	<text id=46>(203) 775-7725 ext. 7760</text>
+	<text id=47>Administrative Support Staff</text>
+	<text id=48>Name</text>
+	<text id=49>Title</text>
+	<text id=50>Phone</text>
+	<text id=51>Website</text>
+	<link id=52>Carol Ann D'Arcangelo</link>
+	<text id=53>Administrative Secretary to the Principal</text>
+	<text id=54>(203) 775-7725 ext. 7731</text>
+	"""
 
 	def print_help():
 		print(
@@ -740,25 +783,23 @@ if (
 			"(h) to view commands again\n(r/enter) to run suggested command\n(o) change objective"
 		)
 
-	def get_gpt_command(objective, url, previous_command, browser_content):
+	def get_gpt_command(question, browser_content):
 		prompt = prompt_template
-		prompt = prompt.replace("$objective", objective)
-		prompt = prompt.replace("$url", url[:100])
-		prompt = prompt.replace("$previous_command", previous_command)
-		prompt = prompt.replace("$browser_content", browser_content[:20000])
+		prompt = prompt.replace("$question", question)
+		# print('browser content 10: ', browser_content)
+		prompt = prompt.replace("$browser_content", browser_content[8500:16000])
 		# print('A new tab should have opened')
 		# _crawler.new_tab()
 		# placeholder while trying to get chatgpt to give a response
 		# response = _crawler.ask('who is King Louis 7th?')
-		print('Prompt here: ', prompt)
+		# print('Prompt here: ', prompt)
 		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=2, max_tokens=250)
 		# bot = ChatGPT()
 		# response = bot.ask('is New York state richer than California?')
 		# print(response)
 		# response = subprocess.run("chatgpt", "is New York state richer than California?", "dirB")
 		print ('responses: ', response.choices)
-		action_response = response.choices[0].text.split('1.')[1].split('2.')[0]
-		return action_response
+		return response.choices[0].text
 		# return 'temp'
 
 	def run_cmd(cmd):
@@ -789,25 +830,26 @@ if (
 
 		time.sleep(2)
 
-	objective = "Make a reservation for 2 at 7pm at bistro vida in menlo park"
-	print("\nWelcome to natbot! What is your objective?")
+	question = "Make a reservation for 2 at 7pm at bistro vida in menlo park"
+	print("\nWelcome to natbot! What is your question?")
 	i = input()
 	if len(i) > 0:
-		objective = i
+		question = i
 
 	gpt_cmd = ""
 	prev_cmd = ""
 	_crawler.go_to_page("google.com")
 	try:
 		while True:
-			browser_content = "\n".join(_crawler.crawl())
+			# browser_content = "\n".join(_crawler.crawl())
+			browser_content = "\n".join(_crawler.crawl(url="https://fearlesssalarynegotiation.com/"))
 			prev_cmd = gpt_cmd
-			gpt_cmd = get_gpt_command(objective, _crawler.page.url, prev_cmd, browser_content)
+			gpt_cmd = get_gpt_command(question, browser_content)
 			gpt_cmd = gpt_cmd.strip()
 
 			if not quiet:
-				print("URL: " + _crawler.page.url)
-				print("Objective: " + objective)
+				# print("URL: " + _crawler.page.url)
+				print("Question: " + question)
 				print("----------------\n" + browser_content + "\n----------------\n")
 			if len(gpt_cmd) > 0:
 				print("Suggested command: " + gpt_cmd)

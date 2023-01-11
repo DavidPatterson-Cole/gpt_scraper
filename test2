@@ -1,0 +1,85 @@
+from playwright.sync_api import sync_playwright
+
+def crawl(url):
+  # page = self.page
+  page = page.goto(url)
+  client = page.context.new_cdp_session(page)
+  page_element_buffer = {}
+  start = time.time()
+
+  page_state_as_text = []
+
+  device_pixel_ratio = page.evaluate("window.devicePixelRatio")
+  if platform == "darwin" and device_pixel_ratio == 1:  # lies
+    device_pixel_ratio = 2
+
+  win_scroll_x 		= page.evaluate("window.scrollX")
+  win_scroll_y 		= page.evaluate("window.scrollY")
+  win_upper_bound 	= page.evaluate("window.pageYOffset")
+  win_left_bound 		= page.evaluate("window.pageXOffset") 
+  win_width 			= page.evaluate("window.screen.width")
+  win_height 			= page.evaluate("window.screen.height")
+  win_right_bound 	= win_left_bound + win_width
+  win_lower_bound 	= win_upper_bound + win_height
+  document_offset_height = page.evaluate("document.body.offsetHeight")
+  document_scroll_height = page.evaluate("document.body.scrollHeight")
+
+#		percentage_progress_start = (win_upper_bound / document_scroll_height) * 100
+#		percentage_progress_end = (
+#			(win_height + win_upper_bound) / document_scroll_height
+#		) * 100
+  percentage_progress_start = 1
+  percentage_progress_end = 2
+
+  page_state_as_text.append(
+    {
+      "x": 0,
+      "y": 0,
+      "text": "[scrollbar {:0.2f}-{:0.2f}%]".format(
+        round(percentage_progress_start, 2), round(percentage_progress_end)
+      ),
+    }
+  )
+
+  tree = client.send(
+    "DOMSnapshot.captureSnapshot",
+    {"computedStyles": [], "includeDOMRects": True, "includePaintOrder": True},
+  )
+  strings	 	= tree["strings"]
+  document 	= tree["documents"][0]
+  nodes 		= document["nodes"]
+  backend_node_id = nodes["backendNodeId"]
+  attributes 	= nodes["attributes"]
+  node_value 	= nodes["nodeValue"]
+  parent 		= nodes["parentIndex"]
+  node_types 	= nodes["nodeType"]
+  node_names 	= nodes["nodeName"]
+  is_clickable = set(nodes["isClickable"]["index"])
+
+  text_value 			= nodes["textValue"]
+  text_value_index 	= text_value["index"]
+  text_value_values 	= text_value["value"]
+
+  input_value 		= nodes["inputValue"]
+  input_value_index 	= input_value["index"]
+  input_value_values 	= input_value["value"]
+
+  input_checked 		= nodes["inputChecked"]
+  layout 				= document["layout"]
+  layout_node_index 	= layout["nodeIndex"]
+  bounds 				= layout["bounds"]
+
+  cursor = 0
+  html_elements_text = []
+
+  child_nodes = {}
+  elements_in_view_port = []
+
+  anchor_ancestry = {"-1": (False, None)}
+  button_ancestry = {"-1": (False, None)}
+
+  def main():
+    crawl(url='https://www.teamrora.com')
+
+if __name__ == "__main__":
+  main()
