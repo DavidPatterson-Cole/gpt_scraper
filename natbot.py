@@ -10,6 +10,7 @@ import time
 from sys import argv, exit, platform
 import openai
 import os
+from dotenv import load_dotenv, find_dotenv
 # import asyncio
 # from playwright.async_api import async_playwright
 # import subprocess
@@ -719,7 +720,8 @@ if (
 	__name__ == "__main__"
 ):
 	_crawler = Crawler()
-	openai.api_key = ""
+	load_dotenv(find_dotenv())
+	openai.api_key = os.getenv('openai_api_key')
 	temp_contents = """
 	<button id=0 Accessibility Menu/>
 	<img id=1 Open the Accessibility Menu/>
@@ -788,7 +790,16 @@ if (
 		prompt = prompt_template
 		prompt = prompt.replace("$question", question)
 		# print('browser content 10: ', browser_content)
-		prompt = prompt.replace("$browser_content", browser_content[8500:16000])
+		full_response = []
+		if len(browser_content) > 8000:
+			for i in range(0, len(browser_content), 8000):
+				prompt = prompt.replace("$browser_content", browser_content[i:i+8000])
+				# print('broswer section', i, ': ', browser_content[i:i+8000])
+				response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=2, max_tokens=250)
+				print("loop", i, response.choices[0].text)
+				full_response.append(response.choices[0].text)
+			return full_response
+		prompt = prompt.replace("$browser_content", browser_content)
 		# print('A new tab should have opened')
 		# _crawler.new_tab()
 		# placeholder while trying to get chatgpt to give a response
@@ -799,7 +810,7 @@ if (
 		# response = bot.ask('is New York state richer than California?')
 		# print(response)
 		# response = subprocess.run("chatgpt", "is New York state richer than California?", "dirB")
-		print ('responses: ', response.choices)
+		# print ('responses: ', response.choices)
 		return response.choices[0].text
 		# return 'temp'
 
@@ -846,12 +857,13 @@ if (
 			browser_content = "\n".join(_crawler.crawl(url="https://fearlesssalarynegotiation.com/"))
 			prev_cmd = gpt_cmd
 			gpt_cmd = get_gpt_command(question, browser_content)
-			gpt_cmd = gpt_cmd.strip()
+			# gpt_cmd = gpt_cmd.strip()
+			gpt_cmd = "\n".join(gpt_cmd)
 
 			if not quiet:
 				# print("URL: " + _crawler.page.url)
 				print("Question: " + question)
-				print("----------------\n" + browser_content + "\n----------------\n")
+				# print("----------------\n" + browser_content + "\n----------------\n")
 			if len(gpt_cmd) > 0:
 				print("Suggested command: " + gpt_cmd)
 
