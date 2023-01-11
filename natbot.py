@@ -10,6 +10,7 @@ import time
 from sys import argv, exit, platform
 import openai
 import os
+from dotenv import load_dotenv, find_dotenv
 # import asyncio
 # from playwright.async_api import async_playwright
 # import subprocess
@@ -719,7 +720,8 @@ if (
 	__name__ == "__main__"
 ):
 	_crawler = Crawler()
-	openai.api_key = ""
+	load_dotenv(find_dotenv())
+	openai.api_key = os.getenv('openai_api_key')
 	temp_contents = """
 	<button id=0 Accessibility Menu/>
 	<img id=1 Open the Accessibility Menu/>
