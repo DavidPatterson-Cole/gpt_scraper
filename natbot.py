@@ -21,9 +21,9 @@ import os
 # import operator
 # import platform
 # import sys
-import uuid
+# import uuid
 # from functools import reduce
-from time import sleep
+# from time import sleep
 
 quiet = False
 if len(argv) >= 2:
@@ -34,18 +34,17 @@ if len(argv) >= 2:
 			+ "exercise caution when running suggested commands."
 		)
 
+	# (4) an answer array to store your answers to the objectives after each step you take
+	# Before you issue a command, look at the browser content and provide YOUR TEMPORARY ANSWER which is your best guess at the answer to the objective. Then, based on your given objective, issue whatever command you believe will get you closest to achieving your goal.
+
+
 prompt_template = """
-You are an agent controlling a browser. You are given:
-	(1) an objective that you are trying to achieve
-	(2) the URL of your current web page
-	(3) a simplified text description of what's visible in the browser window (more on that below)
-You can issue these commands:
-	SCROLL UP - scroll up one page
-	SCROLL DOWN - scroll down one page
-	CLICK X - click on a given element. You can only click on links, buttons, and inputs!
-	TYPE X "TEXT" - type the specified text into the input with id X
-	TYPESUBMIT X "TEXT" - same as TYPE above, except then it presses ENTER to submit the form
-  ANSWER "TEXT" - print out the specified text which answers the objective
+You have been given:
+	(1) a question that you are trying to answer
+	(2) a simplified text description of what's visible in the browser window (more on that below)
+
+You should answer the question based on the browser content.
+
 The format of the browser content is highly simplified; all formatting elements are stripped.
 Interactive elements such as links, inputs, buttons are represented like this:
 		<link id=1>text</link>
@@ -53,325 +52,298 @@ Interactive elements such as links, inputs, buttons are represented like this:
 		<input id=3>text</input>
 Images are rendered as their alt text like this:
 		<img id=4 alt=""/>
-Based on your given objective, issue whatever command you believe will get you closest to achieving your goal.
-You always start on Google; you should submit a search query to Google that will take you to the best page for
-achieving your objective. And then interact with that page to achieve your objective.
-If you find yourself on Google and there are no search results displayed yet, you should probably issue a command 
-like "TYPESUBMIT 7 "search query"" to get to a more useful page.
-Then, if you find yourself on a Google search results page, you might issue the command "CLICK 24" to click
-on the first link in the search results. (If your previous command was a TYPESUBMIT your next command should
-probably be a CLICK.)
-Don't try to interact with elements that you can't see.
+
 Here are some examples:
 EXAMPLE 1:
 ==================================================
 CURRENT BROWSER CONTENT:
 ------------------
-<link id=1>About</link>
-<link id=2>Store</link>
-<link id=3>Gmail</link>
-<link id=4>Images</link>
-<link id=5>(Google apps)</link>
-<link id=6>Sign in</link>
-<img id=7 alt="(Google)"/>
-<input id=8 alt="Search"></input>
-<button id=9>(Search by voice)</button>
-<button id=10>(Google Search)</button>
-<button id=11>(I'm Feeling Lucky)</button>
-<link id=12>Advertising</link>
-<link id=13>Business</link>
-<link id=14>How Search works</link>
-<link id=15>Carbon neutral since 2007</link>
-<link id=16>Privacy</link>
-<link id=17>Terms</link>
-<text id=18>Settings</text>
+<button id=0 Accessibility Menu/>
+<img id=1 Open the Accessibility Menu/>
+<link id=2>Skip to main content</link>
+<link id=3>Contact Us</link>
+<link id=4>Quick Links</link>
+<link id=5>Staff Directory</link>
+<text id=6>Powered by</text>
+<link id=7 alt="Google Translate">Translate</link>
+<link id=8 alt="Brookfield High School"/>
+<link id=9>Our Schools</link>
+<link id=10>About Us</link>
+<link id=11>Academics</link>
+<link id=12>Faculty / Staff</link>
+<link id=13>Family</link>
+<link id=14>Students</link>
+<link id=15>Search</link>
+<link id=16 title="Display a printer-friendly version of this page."/>
+<link id=17 alt="Share page with AddThis"/>
+<text id=18>You are here</text>
+<link id=19>Home</link>
+<text id=20>››</text>
+<link id=21>Brookfield High School</link>
+<text id=22>Brookfield High School Staff Directory</text>
+<text id=23>Other Directories</text>
+<link id=24>District</link>
+<text id=25>|</text>
+<link id=26>Whisconier Middle School</link>
+<text id=27>|</text>
+<link id=28>Huckleberry Hill Elementary School</link>
+<text id=29>|</text>
+<link id=30>Center Elementary School</link>
+<link id=31>Administration</link>
+<text id=32>Name</text>
+<text id=33>Title</text>
+<text id=34>Phone</text>
+<text id=35>Website</text>
+<link id=36>Marc Balanda</link>
+<text id=37>Principal</text>
+<text id=38>(203) 775-7725 ext. 7730</text>
+<link id=39>Susan Griffin</link>
+<text id=40>(grades 10 & 12)</text>
+<text id=41>Assistant Principal</text>
+<text id=42>(203) 775-7725 ext. 7733</text>
+<link id=43>Jules Scheithe</link>
+<text id=44>(grades 9 & 11)</text>
+<text id=45>Assistant Principal</text>
+<text id=46>(203) 775-7725 ext. 7760</text>
+<text id=47>Administrative Support Staff</text>
+<text id=48>Name</text>
+<text id=49>Title</text>
+<text id=50>Phone</text>
+<text id=51>Website</text>
+<link id=52>Carol Ann D'Arcangelo</link>
+<text id=53>Administrative Secretary to the Principal</text>
+<text id=54>(203) 775-7725 ext. 7731</text>
 ------------------
-OBJECTIVE: Find a 2 bedroom house for sale in Anchorage AK for under $750k
-CURRENT URL: https://www.google.com/
-YOUR COMMAND: 
-TYPESUBMIT 8 "anchorage redfin"
-==================================================
-EXAMPLE 2:
-==================================================
-CURRENT BROWSER CONTENT:
-------------------
-<link id=1>About</link>
-<link id=2>Store</link>
-<link id=3>Gmail</link>
-<link id=4>Images</link>
-<link id=5>(Google apps)</link>
-<link id=6>Sign in</link>
-<img id=7 alt="(Google)"/>
-<input id=8 alt="Search"></input>
-<button id=9>(Search by voice)</button>
-<button id=10>(Google Search)</button>
-<button id=11>(I'm Feeling Lucky)</button>
-<link id=12>Advertising</link>
-<link id=13>Business</link>
-<link id=14>How Search works</link>
-<link id=15>Carbon neutral since 2007</link>
-<link id=16>Privacy</link>
-<link id=17>Terms</link>
-<text id=18>Settings</text>
-------------------
-OBJECTIVE: Make a reservation for 4 at Dorsia at 8pm
-CURRENT URL: https://www.google.com/
-YOUR COMMAND: 
-TYPESUBMIT 8 "dorsia nyc opentable"
-==================================================
-EXAMPLE 3:
-==================================================
-CURRENT BROWSER CONTENT:
-------------------
-<button id=1>For Businesses</button>
-<button id=2>Mobile</button>
-<button id=3>Help</button>
-<button id=4 alt="Language Picker">EN</button>
-<link id=5>OpenTable logo</link>
-<button id=6 alt ="search">Search</button>
-<text id=7>Find your table for any occasion</text>
-<button id=8>(Date selector)</button>
-<text id=9>Sep 28, 2022</text>
-<text id=10>7:00 PM</text>
-<text id=11>2 people</text>
-<input id=12 alt="Location, Restaurant, or Cuisine"></input> 
-<button id=13>Let’s go</button>
-<text id=14>It looks like you're in Peninsula. Not correct?</text> 
-<button id=15>Get current location</button>
-<button id=16>Next</button>
-------------------
-OBJECTIVE: Make a reservation for 4 for dinner at Dorsia in New York City at 8pm
-CURRENT URL: https://www.opentable.com/
-YOUR COMMAND: 
-TYPESUBMIT 12 "dorsia new york city"
-==================================================
-The current browser content, objective, and current URL follow. Reply with your next command to the browser.
+QUESTION: Who is the secretary to the principal?
+YOUR ANSWER: Carol Ann D'Arcangelo
+
+The current browser content, the question you are answering follow. Reply with your answer.
 CURRENT BROWSER CONTENT:
 ------------------
 $browser_content
 ------------------
-OBJECTIVE: $objective
-CURRENT URL: $url
-PREVIOUS COMMAND: $previous_command
-YOUR COMMAND:
+QUESTION: $question
+YOUR ANSWER:
 """
 
 black_listed_elements = set(["html", "head", "title", "meta", "iframe", "body", "script", "style", "path", "svg", "br", "::marker",])
 
 class Crawler:
 
-	session_div_id = "chatgpt-wrapper-session-data"
+	# session_div_id = "chatgpt-wrapper-session-data"
 
 	def __init__(self):
 		self.browser = (
-      # async_playwright()
-      # .start()
-			# .chromium.launch(headless=False)
-			# self.context = self.browser.new_context()
-			# self.page = self.context.new_page()
+      sync_playwright()
+      .start()
+			.chromium.launch(headless=False)
 
 			# Attempted to swith to Firefox but it doesn't work because of the CDP thing
-			sync_playwright()
-			.start()
-			.firefox.launch_persistent_context(
-        user_data_dir="/tmp/playwright",
-				headless=True,
-			)
+			# sync_playwright()
+			# .start()
+			# .firefox.launch_persistent_context(
+      #   user_data_dir="/tmp/playwright",
+			# 	headless=True,
+			# )
 		)
-		self.session = None
-		self.parent_message_id = str(uuid.uuid4())
-		self.conversation_id = None
-		self.page = self.browser.new_page()
-		self.page.set_viewport_size({"width": 1280, "height": 1080})
+
+		self.context = self.browser.new_context()
+		self.page = self.context.new_page()
+
+		# self.session = None
+		# self.parent_message_id = str(uuid.uuid4())
+		# self.conversation_id = None
+		# self.page = self.browser.new_page()
+		# self.page.set_viewport_size({"width": 1280, "height": 1080})
   
 	# Added this 
-	def new_tab(self):
+	# def new_tab(self):
 		# self.page2 = self.browser.play.launch_persistent_context(
     #         user_data_dir="/tmp/playwright",
     #         headless=headless,
     #     )
-		self.page2 = self.browser.new_page()
-		self.page2.goto("https://chat.openai.com/")
+		# self.page2 = self.browser.new_page()
+		# self.page2.goto("https://chat.openai.com/")
 
-	def refresh_session(self):
-			self.page2.evaluate(
-				"""
-				const xhr = new XMLHttpRequest();
-				xhr.open('GET', 'https://chat.openai.com/api/auth/session');
-				xhr.onload = () => {
-					if(xhr.status == 200) {
-						var mydiv = document.createElement('DIV');
-						mydiv.id = "SESSION_DIV_ID"
-						mydiv.innerHTML = xhr.responseText;
-						document.body.appendChild(mydiv);
-					}
-				};
-				xhr.send();
-				""".replace(
-					"SESSION_DIV_ID", self.session_div_id
-				)
-			)
+	# def refresh_session(self):
+	# 		self.page2.evaluate(
+	# 			"""
+	# 			const xhr = new XMLHttpRequest();
+	# 			xhr.open('GET', 'https://chat.openai.com/api/auth/session');
+	# 			xhr.onload = () => {
+	# 				if(xhr.status == 200) {
+	# 					var mydiv = document.createElement('DIV');
+	# 					mydiv.id = "SESSION_DIV_ID"
+	# 					mydiv.innerHTML = xhr.responseText;
+	# 					document.body.appendChild(mydiv);
+	# 				}
+	# 			};
+	# 			xhr.send();
+	# 			""".replace(
+	# 				"SESSION_DIV_ID", self.session_div_id
+	# 			)
+	# 		)
 
-			while True:
-				print('session div:', self.session_div_id)
-				session_datas = self.page2.query_selector_all(f"div#{self.session_div_id}")
-				if len(session_datas) > 0:
-					break
-				sleep(0.2)
+	# 		while True:
+	# 			print('session div:', self.session_div_id)
+	# 			session_datas = self.page2.query_selector_all(f"div#{self.session_div_id}")
+	# 			if len(session_datas) > 0:
+	# 				break
+	# 			sleep(0.2)
 
-			session_data = json.loads(session_datas[0].inner_text())
-			self.session = session_data
+	# 		session_data = json.loads(session_datas[0].inner_text())
+	# 		self.session = session_data
 
-			self.page2.evaluate(f"document.getElementById('{self.session_div_id}').remove()")
+	# 		self.page2.evaluate(f"document.getElementById('{self.session_div_id}').remove()")
 
-	def _cleanup_divs(self):
-		self.page2.evaluate(f"document.getElementById('{self.stream_div_id}').remove()")
-		self.page2.evaluate(f"document.getElementById('{self.eof_div_id}').remove()")
+	# def _cleanup_divs(self):
+	# 	self.page2.evaluate(f"document.getElementById('{self.stream_div_id}').remove()")
+	# 	self.page2.evaluate(f"document.getElementById('{self.eof_div_id}').remove()")
 
-	def ask_stream(self, prompt: str):
-		if self.session is None:
-			self.refresh_session()
-		print('made it here')
-		new_message_id = str(uuid.uuid4())
-		if "accessToken" not in self.session:
-			yield (
-				"Your ChatGPT session is not usable.\n"
-				"* Run this program with the `install` parameter and log in to ChatGPT.\n"
-				"* If you think you are already logged in, try running the `session` command."
-			)
-			return
+	# def ask_stream(self, prompt: str):
+	# 	if self.session is None:
+	# 		self.refresh_session()
+	# 	print('made it here')
+	# 	new_message_id = str(uuid.uuid4())
+	# 	if "accessToken" not in self.session:
+	# 		yield (
+	# 			"Your ChatGPT session is not usable.\n"
+	# 			"* Run this program with the `install` parameter and log in to ChatGPT.\n"
+	# 			"* If you think you are already logged in, try running the `session` command."
+	# 		)
+	# 		return
 
-		request = {
-			"messages": [
-				{
-					"id": new_message_id,
-					"role": "user",
-					"content": {"content_type": "text", "parts": [prompt]},
-				}
-			],
-			"model": "text-davinci-002-render",
-			"conversation_id": self.conversation_id,
-			"parent_message_id": self.parent_message_id,
-			"action": "next",
-		}
+	# 	request = {
+	# 		"messages": [
+	# 			{
+	# 				"id": new_message_id,
+	# 				"role": "user",
+	# 				"content": {"content_type": "text", "parts": [prompt]},
+	# 			}
+	# 		],
+	# 		"model": "text-davinci-002-render",
+	# 		"conversation_id": self.conversation_id,
+	# 		"parent_message_id": self.parent_message_id,
+	# 		"action": "next",
+	# 	}
 
-		code = (
-			"""
-			const stream_div = document.createElement('DIV');
-			stream_div.id = "STREAM_DIV_ID";
-			document.body.appendChild(stream_div);
-			const xhr = new XMLHttpRequest();
-			xhr.open('POST', 'https://chat.openai.com/backend-api/conversation');
-			xhr.setRequestHeader('Accept', 'text/event-stream');
-			xhr.setRequestHeader('Content-Type', 'application/json');
-			xhr.setRequestHeader('Authorization', 'Bearer BEARER_TOKEN');
-			xhr.responseType = 'stream';
-			xhr.onreadystatechange = function() {
-				var newEvent;
-				if(xhr.readyState == 3 || xhr.readyState == 4) {
-					const newData = xhr.response.substr(xhr.seenBytes);
-					try {
-						const newEvents = newData.split(/\\n\\n/).reverse();
-						newEvents.shift();
-						if(newEvents[0] == "data: [DONE]") {
-							newEvents.shift();
-						}
-						if(newEvents.length > 0) {
-							newEvent = newEvents[0].substring(6);
-							// using XHR for eventstream sucks and occasionally ive seen incomplete
-							// json objects come through  JSON.parse will throw if that happens, and
-							// that should just skip until we get a full response.
-							JSON.parse(newEvent);
-						}
-					} catch (err) {
-						console.log(err);
-						return;
-					}
-					if(newEvent !== undefined) {
-						stream_div.innerHTML = btoa(newEvent);
-						xhr.seenBytes = xhr.responseText.length;
-					}
-				}
-				if(xhr.readyState == 4) {
-					const eof_div = document.createElement('DIV');
-					eof_div.id = "EOF_DIV_ID";
-					document.body.appendChild(eof_div);
-				}
-			};
-			xhr.send(JSON.stringify(REQUEST_JSON));
-			""".replace(
-				"BEARER_TOKEN", self.session["accessToken"]
-			)
-			.replace("REQUEST_JSON", json.dumps(request))
-			.replace("STREAM_DIV_ID", self.stream_div_id)
-			.replace("EOF_DIV_ID", self.eof_div_id)
-		)
+	# 	code = (
+	# 		"""
+	# 		const stream_div = document.createElement('DIV');
+	# 		stream_div.id = "STREAM_DIV_ID";
+	# 		document.body.appendChild(stream_div);
+	# 		const xhr = new XMLHttpRequest();
+	# 		xhr.open('POST', 'https://chat.openai.com/backend-api/conversation');
+	# 		xhr.setRequestHeader('Accept', 'text/event-stream');
+	# 		xhr.setRequestHeader('Content-Type', 'application/json');
+	# 		xhr.setRequestHeader('Authorization', 'Bearer BEARER_TOKEN');
+	# 		xhr.responseType = 'stream';
+	# 		xhr.onreadystatechange = function() {
+	# 			var newEvent;
+	# 			if(xhr.readyState == 3 || xhr.readyState == 4) {
+	# 				const newData = xhr.response.substr(xhr.seenBytes);
+	# 				try {
+	# 					const newEvents = newData.split(/\\n\\n/).reverse();
+	# 					newEvents.shift();
+	# 					if(newEvents[0] == "data: [DONE]") {
+	# 						newEvents.shift();
+	# 					}
+	# 					if(newEvents.length > 0) {
+	# 						newEvent = newEvents[0].substring(6);
+	# 						// using XHR for eventstream sucks and occasionally ive seen incomplete
+	# 						// json objects come through  JSON.parse will throw if that happens, and
+	# 						// that should just skip until we get a full response.
+	# 						JSON.parse(newEvent);
+	# 					}
+	# 				} catch (err) {
+	# 					console.log(err);
+	# 					return;
+	# 				}
+	# 				if(newEvent !== undefined) {
+	# 					stream_div.innerHTML = btoa(newEvent);
+	# 					xhr.seenBytes = xhr.responseText.length;
+	# 				}
+	# 			}
+	# 			if(xhr.readyState == 4) {
+	# 				const eof_div = document.createElement('DIV');
+	# 				eof_div.id = "EOF_DIV_ID";
+	# 				document.body.appendChild(eof_div);
+	# 			}
+	# 		};
+	# 		xhr.send(JSON.stringify(REQUEST_JSON));
+	# 		""".replace(
+	# 			"BEARER_TOKEN", self.session["accessToken"]
+	# 		)
+	# 		.replace("REQUEST_JSON", json.dumps(request))
+	# 		.replace("STREAM_DIV_ID", self.stream_div_id)
+	# 		.replace("EOF_DIV_ID", self.eof_div_id)
+	# 	)
 
-		self.page2.evaluate(code)
+	# 	self.page2.evaluate(code)
 
-		last_event_msg = ""
-		while True:
-			eof_datas = self.page2.query_selector_all(f"div#{self.eof_div_id}")
-			conversation_datas = self.page2.query_selector_all(
-				f"div#{self.stream_div_id}"
-			)
-			if len(conversation_datas) == 0:
-				continue
+	# 	last_event_msg = ""
+	# 	while True:
+	# 		eof_datas = self.page2.query_selector_all(f"div#{self.eof_div_id}")
+	# 		conversation_datas = self.page2.query_selector_all(
+	# 			f"div#{self.stream_div_id}"
+	# 		)
+	# 		if len(conversation_datas) == 0:
+	# 			continue
 			
-			full_event_message = None
+	# 		full_event_message = None
 			
-			try:
-				event_raw = base64.b64decode(conversation_datas[0].inner_html())
-				if len(event_raw) > 0:
-					event = json.loads(event_raw)
-					if event is not None:
-						self.parent_message_id = event["message"]["id"]
-						self.conversation_id = event["conversation_id"]
-						full_event_message = "\n".join(
-							event["message"]["content"]["parts"]
-						)
-			except Exception:
-				yield (
-					"Failed to read response from ChatGPT.  Tips:\n"
-					" * Try again.  ChatGPT can be flaky.\n"
-					" * Use the `session` command to refresh your session, and then try again.\n"
-					" * Restart the program in the `install` mode and make sure you are logged in."
-				)
-				break
+	# 		try:
+	# 			event_raw = base64.b64decode(conversation_datas[0].inner_html())
+	# 			if len(event_raw) > 0:
+	# 				event = json.loads(event_raw)
+	# 				if event is not None:
+	# 					self.parent_message_id = event["message"]["id"]
+	# 					self.conversation_id = event["conversation_id"]
+	# 					full_event_message = "\n".join(
+	# 						event["message"]["content"]["parts"]
+	# 					)
+	# 		except Exception:
+	# 			yield (
+	# 				"Failed to read response from ChatGPT.  Tips:\n"
+	# 				" * Try again.  ChatGPT can be flaky.\n"
+	# 				" * Use the `session` command to refresh your session, and then try again.\n"
+	# 				" * Restart the program in the `install` mode and make sure you are logged in."
+	# 			)
+	# 			break
 
-			if full_event_message is not None:
-				chunk = full_event_message[len(last_event_msg) :]
-				last_event_msg = full_event_message
-				yield chunk
+	# 		if full_event_message is not None:
+	# 			chunk = full_event_message[len(last_event_msg) :]
+	# 			last_event_msg = full_event_message
+	# 			yield chunk
 
-			# if we saw the eof signal, this was the last event we
-			# # should process and we are done
-			if len(eof_datas) > 0:
-				break
+	# 		# if we saw the eof signal, this was the last event we
+	# 		# # should process and we are done
+	# 		if len(eof_datas) > 0:
+	# 			break
 
-			sleep(0.2)
+	# 		sleep(0.2)
 
-		self._cleanup_divs()
+	# 	self._cleanup_divs()
 
-	def ask(self, message: str) -> str:
-		"""
-		Send a message to chatGPT and return the response.
-		Args:
-			message (str): The message to send.
-		Returns:
-			str: The response received from OpenAI.
-		"""
-		print('In the ask function')
-		response = list(self.ask_stream(message))
-		return (
-			reduce(operator.add, response)
-			if len(response) > 0
-			else "Unusable response produced by ChatGPT, maybe its unavailable."
-		)
+	# def ask(self, message: str) -> str:
+	# 	"""
+	# 	Send a message to chatGPT and return the response.
+	# 	Args:
+	# 		message (str): The message to send.
+	# 	Returns:
+	# 		str: The response received from OpenAI.
+	# 	"""
+	# 	print('In the ask function')
+	# 	response = list(self.ask_stream(message))
+	# 	return (
+	# 		reduce(operator.add, response)
+	# 		if len(response) > 0
+	# 		else "Unusable response produced by ChatGPT, maybe its unavailable."
+	# 	)
 
-	def new_conversation(self):
-		self.parent_message_id = str(uuid.uuid4())
-		self.conversation_id = None
+	# def new_conversation(self):
+	# 	self.parent_message_id = str(uuid.uuid4())
+	# 	self.conversation_id = None
 
 # --------------------------------------------------------------------------------
 
@@ -416,9 +388,11 @@ class Crawler:
 	def enter(self):
 		self.page.keyboard.press("Enter")
 
-	def crawl(self):
+	def crawl(self, url):
+		Crawler.go_to_page(self, url)
 		page = self.page
-		page_element_buffer = self.page_element_buffer
+		client = page.context.new_cdp_session(self.page)
+		page_element_buffer = {}
 		start = time.time()
 
 		page_state_as_text = []
@@ -455,7 +429,7 @@ class Crawler:
 			}
 		)
 
-		tree = self.client.send(
+		tree = client.send(
 			"DOMSnapshot.captureSnapshot",
 			{"computedStyles": [], "includeDOMRects": True, "includePaintOrder": True},
 		)
@@ -575,26 +549,26 @@ class Crawler:
 			if node_name in black_listed_elements:
 				continue
 
-			[x, y, width, height] = bounds[cursor]
-			x /= device_pixel_ratio
-			y /= device_pixel_ratio
-			width /= device_pixel_ratio
-			height /= device_pixel_ratio
+			# [x, y, width, height] = bounds[cursor]
+			# x /= device_pixel_ratio
+			# y /= device_pixel_ratio
+			# width /= device_pixel_ratio
+			# height /= device_pixel_ratio
 
-			elem_left_bound = x
-			elem_top_bound = y
-			elem_right_bound = x + width
-			elem_lower_bound = y + height
+			# elem_left_bound = x
+			# elem_top_bound = y
+			# elem_right_bound = x + width
+			# elem_lower_bound = y + height
 
-			partially_is_in_viewport = (
-				elem_left_bound < win_right_bound
-				and elem_right_bound >= win_left_bound
-				and elem_top_bound < win_lower_bound
-				and elem_lower_bound >= win_upper_bound
-			)
+			# partially_is_in_viewport = (
+			# 	elem_left_bound < win_right_bound
+			# 	and elem_right_bound >= win_left_bound
+			# 	and elem_top_bound < win_lower_bound
+			# 	and elem_lower_bound >= win_upper_bound
+			# )
 
-			if not partially_is_in_viewport:
-				continue
+			# if not partially_is_in_viewport:
+			# 	continue
 
 			meta_data = []
 
@@ -671,10 +645,10 @@ class Crawler:
 					"node_value": element_node_value,
 					"node_meta": meta_data,
 					"is_clickable": index in is_clickable,
-					"origin_x": int(x),
-					"origin_y": int(y),
-					"center_x": int(x + (width / 2)),
-					"center_y": int(y + (height / 2)),
+					# "origin_x": int(x),
+					# "origin_y": int(y),
+					# "center_x": int(x + (width / 2)),
+					# "center_y": int(y + (height / 2)),
 				}
 			)
 
@@ -745,7 +719,64 @@ if (
 	__name__ == "__main__"
 ):
 	_crawler = Crawler()
-	openai.api_key = "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"
+	openai.api_key = ""
+	temp_contents = """
+	<button id=0 Accessibility Menu/>
+	<img id=1 Open the Accessibility Menu/>
+	<link id=2>Skip to main content</link>
+	<link id=3>Contact Us</link>
+	<link id=4>Quick Links</link>
+	<link id=5>Staff Directory</link>
+	<text id=6>Powered by</text>
+	<link id=7 alt="Google Translate">Translate</link>
+	<link id=8 alt="Brookfield High School"/>
+	<link id=9>Our Schools</link>
+	<link id=10>About Us</link>
+	<link id=11>Academics</link>
+	<link id=12>Faculty / Staff</link>
+	<link id=13>Family</link>
+	<link id=14>Students</link>
+	<link id=15>Search</link>
+	<link id=16 title="Display a printer-friendly version of this page."/>
+	<link id=17 alt="Share page with AddThis"/>
+	<text id=18>You are here</text>
+	<link id=19>Home</link>
+	<text id=20>››</text>
+	<link id=21>Brookfield High School</link>
+	<text id=22>Brookfield High School Staff Directory</text>
+	<text id=23>Other Directories</text>
+	<link id=24>District</link>
+	<text id=25>|</text>
+	<link id=26>Whisconier Middle School</link>
+	<text id=27>|</text>
+	<link id=28>Huckleberry Hill Elementary School</link>
+	<text id=29>|</text>
+	<link id=30>Center Elementary School</link>
+	<link id=31>Administration</link>
+	<text id=32>Name</text>
+	<text id=33>Title</text>
+	<text id=34>Phone</text>
+	<text id=35>Website</text>
+	<link id=36>Marc Balanda</link>
+	<text id=37>Principal</text>
+	<text id=38>(203) 775-7725 ext. 7730</text>
+	<link id=39>Susan Griffin</link>
+	<text id=40>(grades 10 & 12)</text>
+	<text id=41>Assistant Principal</text>
+	<text id=42>(203) 775-7725 ext. 7733</text>
+	<link id=43>Jules Scheithe</link>
+	<text id=44>(grades 9 & 11)</text>
+	<text id=45>Assistant Principal</text>
+	<text id=46>(203) 775-7725 ext. 7760</text>
+	<text id=47>Administrative Support Staff</text>
+	<text id=48>Name</text>
+	<text id=49>Title</text>
+	<text id=50>Phone</text>
+	<text id=51>Website</text>
+	<link id=52>Carol Ann D'Arcangelo</link>
+	<text id=53>Administrative Secretary to the Principal</text>
+	<text id=54>(203) 775-7725 ext. 7731</text>
+	"""
 
 	def print_help():
 		print(
@@ -753,25 +784,24 @@ if (
 			"(h) to view commands again\n(r/enter) to run suggested command\n(o) change objective"
 		)
 
-	def get_gpt_command(objective, url, previous_command, browser_content):
+	def get_gpt_command(question, browser_content):
 		prompt = prompt_template
-		prompt = prompt.replace("$objective", objective)
-		prompt = prompt.replace("$url", url[:100])
-		prompt = prompt.replace("$previous_command", previous_command)
-		prompt = prompt.replace("$browser_content", browser_content[:4500])
-		print('A new tab should have opened')
-		_crawler.new_tab()
+		prompt = prompt.replace("$question", question)
+		# print('browser content 10: ', browser_content)
+		prompt = prompt.replace("$browser_content", browser_content[8500:16000])
+		# print('A new tab should have opened')
+		# _crawler.new_tab()
 		# placeholder while trying to get chatgpt to give a response
-		response = _crawler.ask('who is King Louis 7th?')
-		print('Response here: ', response)
-		# response = openai.Completion.create(model="text-davinci-002", prompt=prompt, temperature=0.5, best_of=10, n=3, max_tokens=50)
+		# response = _crawler.ask('who is King Louis 7th?')
+		# print('Prompt here: ', prompt)
+		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=2, max_tokens=250)
 		# bot = ChatGPT()
 		# response = bot.ask('is New York state richer than California?')
 		# print(response)
 		# response = subprocess.run("chatgpt", "is New York state richer than California?", "dirB")
-		# print ('response: ', response.choices[0].text)
-		# return response.choices[0].text
-		return 'temp'
+		print ('responses: ', response.choices)
+		return response.choices[0].text
+		# return 'temp'
 
 	def run_cmd(cmd):
 		cmd = cmd.split("\n")[0]
@@ -801,25 +831,26 @@ if (
 
 		time.sleep(2)
 
-	objective = "Make a reservation for 2 at 7pm at bistro vida in menlo park"
-	print("\nWelcome to natbot! What is your objective?")
+	question = "Make a reservation for 2 at 7pm at bistro vida in menlo park"
+	print("\nWelcome to natbot! What is your question?")
 	i = input()
 	if len(i) > 0:
-		objective = i
+		question = i
 
 	gpt_cmd = ""
 	prev_cmd = ""
 	_crawler.go_to_page("google.com")
 	try:
 		while True:
-			browser_content = "\n".join(_crawler.crawl())
+			# browser_content = "\n".join(_crawler.crawl())
+			browser_content = "\n".join(_crawler.crawl(url="https://fearlesssalarynegotiation.com/"))
 			prev_cmd = gpt_cmd
-			gpt_cmd = get_gpt_command(objective, _crawler.page.url, prev_cmd, browser_content)
+			gpt_cmd = get_gpt_command(question, browser_content)
 			gpt_cmd = gpt_cmd.strip()
 
 			if not quiet:
-				print("URL: " + _crawler.page.url)
-				print("Objective: " + objective)
+				# print("URL: " + _crawler.page.url)
+				print("Question: " + question)
 				print("----------------\n" + browser_content + "\n----------------\n")
 			if len(gpt_cmd) > 0:
 				print("Suggested command: " + gpt_cmd)
