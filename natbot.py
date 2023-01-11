@@ -719,6 +719,7 @@ if (
 	__name__ == "__main__"
 ):
 	_crawler = Crawler()
+	openai.api_key = ""
 	temp_contents = """
 	<button id=0 Accessibility Menu/>
 	<img id=1 Open the Accessibility Menu/>
