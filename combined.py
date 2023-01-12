@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv, find_dotenv
 from ast import literal_eval
 
-quiet = False
+quiet = True
 if len(argv) >= 2:
 	if argv[1] == '-q' or argv[1] == '--quiet':
 		quiet = True
@@ -30,6 +30,7 @@ You can issue these commands:
   ANSWER "TEXT" - print out the specified text which answers the objective
 The format of the browser content is highly simplified; all formatting elements are stripped.
 Interactive elements such as links, inputs, buttons are represented like this:
+    <url>url</url>
 		<link id=1>text</link>
 		<button id=2>text</button>
 		<input id=3>text</input>
@@ -153,6 +154,7 @@ class Crawler:
 
 		self.context = self.browser.new_context()
 		self.page = self.context.new_page()
+		self.url = ""
 
 	def go_to_page(self, url):
 		self.page.goto(url=url if "://" in url else "http://" + url)
@@ -236,7 +238,7 @@ class Crawler:
 		)
 		strings	 	= tree["strings"]
 		url = tree["strings"][0]
-		print("url", url)
+		# print("url", url)
 		document 	= tree["documents"][0]
 		nodes 		= document["nodes"]
 		backend_node_id = nodes["backendNodeId"]
@@ -457,7 +459,8 @@ class Crawler:
 
 		# lets filter further to remove anything that does not hold any text nor has click handlers + merge text from leaf#text nodes with the parent
 		elements_of_interest= []
-		elements_of_interest.append(url)
+		elements_of_interest.append("<url>"+url+"</url>")
+		self.url = url
 		id_counter 			= 0
 
 		for element in elements_in_view_port:
@@ -519,7 +522,7 @@ class Crawler:
 		print("Parsing time: {:0.2f} seconds".format(time.time() - start))
 		return elements_of_interest
 
-def natbot():
+def natbot(natbot_prompt):
 	_crawler = Crawler()
 	load_dotenv(find_dotenv())
 	openai.api_key = os.getenv('openai_api_key')
@@ -574,15 +577,16 @@ def natbot():
 			_crawler.type(id, text)
 		elif cmd.startswith("ANSWER"):
 			print('Here: ', cmd)
+			return _crawler.page.url
 			exit(0)
 
 		time.sleep(2)
 
-	objective = "Make a reservation for 2 at 7pm at bistro vida in menlo park"
-	print("\nWelcome to natbot! What is your objective?")
-	i = input()
-	if len(i) > 0:
-		objective = i
+	objective = natbot_prompt
+	# print("\nWelcome to natbot! What is your objective?")
+	# i = input()
+	# if len(i) > 0:
+	# 	objective = i
 
 	gpt_cmd = ""
 	prev_cmd = ""
@@ -595,39 +599,47 @@ def natbot():
 			gpt_cmd = get_gpt_command(objective, _crawler.page.url, prev_cmd, browser_content)
 			gpt_cmd = gpt_cmd.strip()
 
-			if not quiet:
-				print("URL: " + _crawler.page.url)
-				print("Objective: " + objective)
-				print("----------------\n" + browser_content + "\n----------------\n")
+			# if not quiet:
+				# print("URL: " + _crawler.page.url)
+				# print("Objective: " + objective)
+				# print("----------------\n" + browser_content + "\n----------------\n")
 			if len(gpt_cmd) > 0:
 				print("Suggested command: " + gpt_cmd)
 
 
-			command = input()
-			if command == "r" or command == "":
-				run_cmd(gpt_cmd)
-			elif command == "g":
-				url = input("URL:")
-				_crawler.go_to_page(url)
-			elif command == "u":
-				_crawler.scroll("up")
-				time.sleep(1)
-			elif command == "d":
-				_crawler.scroll("down")
-				time.sleep(1)
-			elif command == "c":
-				id = input("id:")
-				_crawler.click(id)
-				time.sleep(1)
-			elif command == "t":
-				id = input("id:")
-				text = input("text:")
-				_crawler.type(id, text)
-				time.sleep(1)
-			elif command == "o":
-				objective = input("Objective:")
-			else:
-				print_help()
+			# command = input()
+			if gpt_cmd.startswith("ANSWER"):
+				# _crawler.browser.close()
+				# exit(0)
+				# _crawler.browser.stop()
+				# _crawler.browser.__exit__()
+				_crawler.context.close()
+				return _crawler.page.url
+			run_cmd(gpt_cmd)
+			# if command == "r" or command == "":
+			# 	run_cmd(gpt_cmd)
+			# if command == "g":
+			# 	url = input("URL:")
+			# 	_crawler.go_to_page(url)
+			# elif command == "u":
+			# 	_crawler.scroll("up")
+			# 	time.sleep(1)
+			# elif command == "d":
+			# 	_crawler.scroll("down")
+			# 	time.sleep(1)
+			# elif command == "c":
+			# 	id = input("id:")
+			# 	_crawler.click(id)
+			# 	time.sleep(1)
+			# elif command == "t":
+			# 	id = input("id:")
+			# 	text = input("text:")
+			# 	_crawler.type(id, text)
+			# 	time.sleep(1)
+			# elif command == "o":
+			# 	objective = input("Objective:")
+			# else:
+			# 	print_help()
 	except KeyboardInterrupt:
 		print("\n[!] Ctrl+C detected, exiting gracefully.")
 		exit(0)
@@ -1107,28 +1119,6 @@ def question_bot(url):
     print("\n[!] Ctrl+C detected, exiting gracefully.")
     exit(0)
 
-def main():
-  load_dotenv(find_dotenv())
-  openai.api_key = os.getenv('openai_api_key')
-  # print("\nWelcome! What is your question?")
-  # Give me a list of 3 high schools in Fairfield County, CT
-  # i = input()
-  # prompt = i
-  # response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=1, max_tokens=250)
-  # print(response.choices[0].text)
-  # print('Waiting...')
-  # Find the staff directory for Fairfield County, CT and return the url for that page
-  # i2 = input()
-  # prompt2 = i2
-  # response2 = openai.Completion.create(model="text-davinci-003", prompt=prompt2, temperature=0.5, best_of=5, n=1, max_tokens=250)
-  # Give me the url for staff directory of brookfield high school, CT
-  # url = natbot()
-  # url = 'https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory'
-  url = 'https://www.stamfordhigh.org/connect/staff-directory'
-  question_bot(url)
-
-  # pipe the url into the Q&A page scraping version of natbot we have 
-
 def davinci(prompt):
 	prompt_template = """
 		Your job is to be a Q&A bot that returns the answer as a python string that is comma delimited. Your answer should be as concise as possible.
@@ -1153,16 +1143,40 @@ def davinci(prompt):
 	res = [x.strip() for x in res]
 	return res
 
-def load_keys():
-	load_dotenv(find_dotenv())
-	openai.api_key = os.getenv('openai_api_key')
-
 def main():
-	print("\nWelcome! Firing up the high school bot")
-	load_keys()
-	high_school_prompt = "What are the names of 100 high schools in Fairfield County, CT?"
-	high_schools = davinci(high_school_prompt)
-	print(high_schools)
+  load_dotenv(find_dotenv())
+  openai.api_key = os.getenv('openai_api_key')
+  # print("\nWelcome! What is your question?")
+  # Give me a list of 3 high schools in Fairfield County, CT
+  # i = input()
+  # prompt = i
+  # response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=1, max_tokens=250)
+  # print(response.choices[0].text)
+  # print('Waiting...')
+  # Find the staff directory for Fairfield County, CT and return the url for that page
+  # i2 = input()
+  # prompt2 = i2
+  # response2 = openai.Completion.create(model="text-davinci-003", prompt=prompt2, temperature=0.5, best_of=5, n=1, max_tokens=250)
+  # Give me the url for staff directory of brookfield high school, CT
+  print("\nWelcome! Firing up the high school bot")
+  # high_school_prompt = "What are the names of 100 high schools in Fairfield County, CT?"
+  # high_schools = davinci(high_school_prompt)
+  # print(high_schools)
+
+  high_schools = ['Amity Regional High School', 'Brien McMahon High School']
+
+  url_array = []
+  for high_school in high_schools[0:2]:
+    natbot_prompt = "Find the staff directory for " + high_school + " and then say ANSWER done"
+    url = natbot(natbot_prompt)
+    url_array.append(url)
+    time.sleep(10)
+  print('our url: ', url_array)
+  # url = natbot()
+  # url = 'https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory'
+  # url = 'https://www.stamfordhigh.org/connect/staff-directory'
+  # question_bot(url)
+
 	# arr = ['Amity Regional High School', ' Brien McMahon High School', ' Brookfield High School', ' Bullard-Havens Technical High School', ' Central High School', ' Danbury High School', ' Darien High School', ' Fairfield Ludlowe High School', ' Fairfield Warde High School', ' Greenwich High School', ' Harding High School', ' Joel Barlow High School', ' Kolbe Cathedral High School', ' Lauralton Hall', ' Masuk High School', ' McMahon High School', ' New Canaan High School', ' New Fairfield High School', ' Newtown High School', ' Norwalk High School', ' Notre Dame Catholic High School', ' Platt Technical High School', ' Pomperaug High School', ' Ridgefield High School', ' Sacred Heart Academy', ' Shepaug Valley High School', ' Staples High School', ' Stratford High School', ' Trumbull High School', ' Weston High School', ' Wilton High School', ' Abbott Tech', ' Ansonia High School', ' Bassick High School', ' Bethel High School', ' Brookfield High School', ' Bunnell High School', ' Bullard-Havens Technical High School', ' Central High School', ' Cheney Tech', ' Danbury High School', ' Derby High School', ' East Catholic High School', ' East Haven High School', ' Fairfield Ludlowe High School', ' Fairfield Warde High School']
 	# arr2 = ['Answer: George Washington', ' John Adams', ' Thomas Jefferson', ' James Madison', ' James Monroe', ' John Quincy Adams', ' Andrew Jackson', ' Martin Van Buren', ' William Henry Harrison', ' John Tyler', ' James K. Polk', ' Zachary Taylor', ' Millard Fillmore', ' Franklin Pierce', ' James Buchanan', ' Abraham Lincoln', ' Andrew Johnson', ' Ulysses S. Grant', ' Rutherford B. Hayes', ' James A. Garfield', ' Chester A. Arthur', ' Grover Cleveland', ' Benjamin Harrison', ' William McKinley', ' Theodore Roosevelt', ' William Howard Taft', ' Woodrow Wilson', ' Warren G. Harding', ' Calvin Coolidge', ' Herbert Hoover', ' Franklin D. Roosevelt', ' Harry S. Truman', ' Dwight D. Eisenhower', ' John F. Kennedy', ' Lyndon B. Johnson', ' Richard Nixon', ' Gerald Ford', ' Jimmy Carter', ' Ronald Reagan', ' George H. W. Bush', ' Bill Clinton', ' George W. Bush', ' Barack Obama', ' Donald Trump']
 
