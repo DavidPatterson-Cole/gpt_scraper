@@ -349,6 +349,7 @@ class Crawler:
 # --------------------------------------------------------------------------------
 
 	def go_to_page(self, url):
+		self.page.set_default_timeout(120000)
 		self.page.goto(url=url if "://" in url else "http://" + url)
 		self.client = self.page.context.new_cdp_session(self.page)
 		self.page_element_buffer = {}
@@ -791,21 +792,25 @@ if (
 		prompt = prompt.replace("$question", question)
 		# print('browser content 10: ', browser_content)
 		full_response = []
-		if len(browser_content) > 8000:
-			for i in range(0, len(browser_content), 8000):
-				prompt = prompt.replace("$browser_content", browser_content[i:i+8000])
-				# print('broswer section', i, ': ', browser_content[i:i+8000])
+		if len(browser_content) > 6500:
+			for i in range(0, len(browser_content), 6500):
+				prompt = prompt_template
+				prompt = prompt.replace("$question", question)
+				print('browser section', i, ': ', browser_content[i:i+6500])
+				prompt = prompt.replace("$browser_content", browser_content[i:i+6500])
+				# print('prompt section', i, ': ', prompt)
 				response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=2, max_tokens=250)
 				print("loop", i, response.choices[0].text)
 				full_response.append(response.choices[0].text)
 			return full_response
+		print('browser content: ', browser_content)
 		prompt = prompt.replace("$browser_content", browser_content)
 		# print('A new tab should have opened')
 		# _crawler.new_tab()
 		# placeholder while trying to get chatgpt to give a response
 		# response = _crawler.ask('who is King Louis 7th?')
 		# print('Prompt here: ', prompt)
-		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=2, max_tokens=250)
+		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.2, best_of=5, n=2, max_tokens=250)
 		# bot = ChatGPT()
 		# response = bot.ask('is New York state richer than California?')
 		# print(response)
@@ -854,18 +859,20 @@ if (
 	try:
 		while True:
 			# browser_content = "\n".join(_crawler.crawl())
-			browser_content = "\n".join(_crawler.crawl(url="https://fearlesssalarynegotiation.com/"))
+			# browser_content = "\n".join(_crawler.crawl(url="https://www.wiltonps.org/338732_2?offset=48&ppl=5"))
+			browser_content = "\n".join(_crawler.crawl(url="https://www.stamfordhigh.org/connect/staff-directory"))
+			# browser_content = "\n".join(_crawler.crawl(url="https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory"))
 			prev_cmd = gpt_cmd
 			gpt_cmd = get_gpt_command(question, browser_content)
 			# gpt_cmd = gpt_cmd.strip()
-			gpt_cmd = "\n".join(gpt_cmd)
+			# gpt_cmd = "".join(gpt_cmd)
 
 			if not quiet:
 				# print("URL: " + _crawler.page.url)
 				print("Question: " + question)
 				# print("----------------\n" + browser_content + "\n----------------\n")
 			if len(gpt_cmd) > 0:
-				print("Suggested command: " + gpt_cmd)
+				print("Suggested command: ", gpt_cmd)
 
 
 			command = input()
