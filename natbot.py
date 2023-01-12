@@ -57,7 +57,7 @@ Images are rendered as their alt text like this:
 Here are some examples:
 EXAMPLE 1:
 ==================================================
-CURRENT BROWSER CONTENT:
+EXAMPLE BROWSER CONTENT:
 ------------------
 <button id=0 Accessibility Menu/>
 <img id=1 Open the Accessibility Menu/>
@@ -723,63 +723,6 @@ if (
 	_crawler = Crawler()
 	load_dotenv(find_dotenv())
 	openai.api_key = os.getenv('openai_api_key')
-	temp_contents = """
-	<button id=0 Accessibility Menu/>
-	<img id=1 Open the Accessibility Menu/>
-	<link id=2>Skip to main content</link>
-	<link id=3>Contact Us</link>
-	<link id=4>Quick Links</link>
-	<link id=5>Staff Directory</link>
-	<text id=6>Powered by</text>
-	<link id=7 alt="Google Translate">Translate</link>
-	<link id=8 alt="Brookfield High School"/>
-	<link id=9>Our Schools</link>
-	<link id=10>About Us</link>
-	<link id=11>Academics</link>
-	<link id=12>Faculty / Staff</link>
-	<link id=13>Family</link>
-	<link id=14>Students</link>
-	<link id=15>Search</link>
-	<link id=16 title="Display a printer-friendly version of this page."/>
-	<link id=17 alt="Share page with AddThis"/>
-	<text id=18>You are here</text>
-	<link id=19>Home</link>
-	<text id=20>››</text>
-	<link id=21>Brookfield High School</link>
-	<text id=22>Brookfield High School Staff Directory</text>
-	<text id=23>Other Directories</text>
-	<link id=24>District</link>
-	<text id=25>|</text>
-	<link id=26>Whisconier Middle School</link>
-	<text id=27>|</text>
-	<link id=28>Huckleberry Hill Elementary School</link>
-	<text id=29>|</text>
-	<link id=30>Center Elementary School</link>
-	<link id=31>Administration</link>
-	<text id=32>Name</text>
-	<text id=33>Title</text>
-	<text id=34>Phone</text>
-	<text id=35>Website</text>
-	<link id=36>Marc Balanda</link>
-	<text id=37>Principal</text>
-	<text id=38>(203) 775-7725 ext. 7730</text>
-	<link id=39>Susan Griffin</link>
-	<text id=40>(grades 10 & 12)</text>
-	<text id=41>Assistant Principal</text>
-	<text id=42>(203) 775-7725 ext. 7733</text>
-	<link id=43>Jules Scheithe</link>
-	<text id=44>(grades 9 & 11)</text>
-	<text id=45>Assistant Principal</text>
-	<text id=46>(203) 775-7725 ext. 7760</text>
-	<text id=47>Administrative Support Staff</text>
-	<text id=48>Name</text>
-	<text id=49>Title</text>
-	<text id=50>Phone</text>
-	<text id=51>Website</text>
-	<link id=52>Carol Ann D'Arcangelo</link>
-	<text id=53>Administrative Secretary to the Principal</text>
-	<text id=54>(203) 775-7725 ext. 7731</text>
-	"""
 
 	def print_help():
 		print(
@@ -791,26 +734,28 @@ if (
 		prompt = prompt_template
 		prompt = prompt.replace("$question", question)
 		# print('browser content 10: ', browser_content)
-		full_response = []
-		if len(browser_content) > 6500:
-			for i in range(0, len(browser_content), 6500):
-				prompt = prompt_template
-				prompt = prompt.replace("$question", question)
-				print('browser section', i, ': ', browser_content[i:i+6500])
-				prompt = prompt.replace("$browser_content", browser_content[i:i+6500])
-				# print('prompt section', i, ': ', prompt)
-				response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=2, max_tokens=250)
-				print("loop", i, response.choices[0].text)
-				full_response.append(response.choices[0].text)
-			return full_response
-		print('browser content: ', browser_content)
-		prompt = prompt.replace("$browser_content", browser_content)
+		# full_response = []
+		# if len(browser_content) > 6500:
+		# 	for i in range(0, len(browser_content), 6500):
+		# 		prompt = prompt_template
+		# 		prompt = prompt.replace("$question", question)
+		# 		# print('browser section', i, ': ', browser_content[i:i+6500])
+		# 		prompt = prompt.replace("$browser_content", browser_content[i:i+6500])
+		# 		# print('prompt section', i, ': ', prompt)
+		# 		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.3, best_of=1, n=1, max_tokens=250)
+		# 		print("loop", i, response.choices[0].text)
+		# 		full_response.append(response.choices[0].text)
+		# 	return full_response
+		# # print('browser content: ', browser_content[13000:19500])
+		prompt = prompt.replace("$browser_content", browser_content[13000:19500])
+		print(prompt)
+		# print(prompt)
 		# print('A new tab should have opened')
 		# _crawler.new_tab()
 		# placeholder while trying to get chatgpt to give a response
 		# response = _crawler.ask('who is King Louis 7th?')
 		# print('Prompt here: ', prompt)
-		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.2, best_of=5, n=2, max_tokens=250)
+		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, top_p=1, temperature=0.3, best_of=1, n=1, max_tokens=250)
 		# bot = ChatGPT()
 		# response = bot.ask('is New York state richer than California?')
 		# print(response)
@@ -860,8 +805,8 @@ if (
 		while True:
 			# browser_content = "\n".join(_crawler.crawl())
 			# browser_content = "\n".join(_crawler.crawl(url="https://www.wiltonps.org/338732_2?offset=48&ppl=5"))
-			browser_content = "\n".join(_crawler.crawl(url="https://www.stamfordhigh.org/connect/staff-directory"))
-			# browser_content = "\n".join(_crawler.crawl(url="https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory"))
+			# browser_content = "\n".join(_crawler.crawl(url="https://www.stamfordhigh.org/connect/staff-directory"))
+			browser_content = "\n".join(_crawler.crawl(url="https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory"))
 			prev_cmd = gpt_cmd
 			gpt_cmd = get_gpt_command(question, browser_content)
 			# gpt_cmd = gpt_cmd.strip()

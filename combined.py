@@ -47,7 +47,7 @@ Don't try to interact with elements that you can't see.
 Here are some examples:
 EXAMPLE 1:
 ==================================================
-CURRENT BROWSER CONTENT:
+EXAMPLE BROWSER CONTENT:
 ------------------
 <link id=1>About</link>
 <link id=2>Store</link>
@@ -457,6 +457,7 @@ class Crawler:
 
 		# lets filter further to remove anything that does not hold any text nor has click handlers + merge text from leaf#text nodes with the parent
 		elements_of_interest= []
+		elements_of_interest.append(url)
 		id_counter 			= 0
 
 		for element in elements_in_view_port:
@@ -631,6 +632,502 @@ def natbot():
 		print("\n[!] Ctrl+C detected, exiting gracefully.")
 		exit(0)
 
+question_prompt_template = """
+You have been given:
+	(1) a question that you are trying to answer
+	(2) a simplified text description of what's visible in the browser window (more on that below)
+
+You should answer the question based on the browser content.
+
+The format of the browser content is highly simplified; all formatting elements are stripped.
+Interactive elements such as links, inputs, buttons are represented like this:
+		<link id=1>text</link>
+		<button id=2>text</button>
+		<input id=3>text</input>
+Images are rendered as their alt text like this:
+		<img id=4 alt=""/>
+
+Here are some examples:
+EXAMPLE 1:
+==================================================
+EXAMPLE BROWSER CONTENT:
+------------------
+<button id=0 Accessibility Menu/>
+<img id=1 Open the Accessibility Menu/>
+<link id=2>Skip to main content</link>
+<link id=3>Contact Us</link>
+<link id=4>Quick Links</link>
+<link id=5>Staff Directory</link>
+<text id=6>Powered by</text>
+<link id=7 alt="Google Translate">Translate</link>
+<link id=8 alt="Brookfield High School"/>
+<link id=9>Our Schools</link>
+<link id=10>About Us</link>
+<link id=11>Academics</link>
+<link id=12>Faculty / Staff</link>
+<link id=13>Family</link>
+<link id=14>Students</link>
+<link id=15>Search</link>
+<link id=16 title="Display a printer-friendly version of this page."/>
+<link id=17 alt="Share page with AddThis"/>
+<text id=18>You are here</text>
+<link id=19>Home</link>
+<text id=20>››</text>
+<link id=21>Brookfield High School</link>
+<text id=22>Brookfield High School Staff Directory</text>
+<text id=23>Other Directories</text>
+<link id=24>District</link>
+<text id=25>|</text>
+<link id=26>Whisconier Middle School</link>
+<text id=27>|</text>
+<link id=28>Huckleberry Hill Elementary School</link>
+<text id=29>|</text>
+<link id=30>Center Elementary School</link>
+<link id=31>Administration</link>
+<text id=32>Name</text>
+<text id=33>Title</text>
+<text id=34>Phone</text>
+<text id=35>Website</text>
+<link id=36>Marc Balanda</link>
+<text id=37>Principal</text>
+<text id=38>(203) 775-7725 ext. 7730</text>
+<link id=39>Susan Griffin</link>
+<text id=40>(grades 10 & 12)</text>
+<text id=41>Assistant Principal</text>
+<text id=42>(203) 775-7725 ext. 7733</text>
+<link id=43>Jules Scheithe</link>
+<text id=44>(grades 9 & 11)</text>
+<text id=45>Assistant Principal</text>
+<text id=46>(203) 775-7725 ext. 7760</text>
+<text id=47>Administrative Support Staff</text>
+<text id=48>Name</text>
+<text id=49>Title</text>
+<text id=50>Phone</text>
+<text id=51>Website</text>
+<link id=52>Carol Ann D'Arcangelo</link>
+<text id=53>Administrative Secretary to the Principal</text>
+<text id=54>(203) 775-7725 ext. 7731</text>
+------------------
+QUESTION: Who is the secretary to the principal?
+YOUR ANSWER: Carol Ann D'Arcangelo
+
+The current browser content, the question you are answering follow. Reply with your answer.
+CURRENT BROWSER CONTENT:
+------------------
+$browser_content
+------------------
+QUESTION: $question
+YOUR ANSWER:
+"""
+
+class Crawler2:
+  def __init__(self):
+    self.browser = (
+      sync_playwright()
+      .start()
+		  .chromium.launch(headless=False)
+		)
+    self.context = self.browser.new_context()
+    self.page = self.context.new_page()
+
+  def qa_go_to_page(self, url):
+      self.page.set_default_timeout(120000)
+      self.page.goto(url=url if "://" in url else "http://" + url)
+      self.client = self.page.context.new_cdp_session(self.page)
+      self.page_element_buffer = {}
+
+  def crawl(self, url):
+      Crawler2.qa_go_to_page(self, url)
+      page = self.page
+      client = page.context.new_cdp_session(self.page)
+      page_element_buffer = {}
+      start = time.time()
+
+      page_state_as_text = []
+
+      device_pixel_ratio = page.evaluate("window.devicePixelRatio")
+      if platform == "darwin" and device_pixel_ratio == 1:  # lies
+        device_pixel_ratio = 2
+
+      win_scroll_x 		= page.evaluate("window.scrollX")
+      win_scroll_y 		= page.evaluate("window.scrollY")
+      win_upper_bound 	= page.evaluate("window.pageYOffset")
+      win_left_bound 		= page.evaluate("window.pageXOffset") 
+      win_width 			= page.evaluate("window.screen.width")
+      win_height 			= page.evaluate("window.screen.height")
+      win_right_bound 	= win_left_bound + win_width
+      win_lower_bound 	= win_upper_bound + win_height
+      document_offset_height = page.evaluate("document.body.offsetHeight")
+      document_scroll_height = page.evaluate("document.body.scrollHeight")
+
+  #		percentage_progress_start = (win_upper_bound / document_scroll_height) * 100
+  #		percentage_progress_end = (
+  #			(win_height + win_upper_bound) / document_scroll_height
+  #		) * 100
+      percentage_progress_start = 1
+      percentage_progress_end = 2
+
+      page_state_as_text.append(
+        {
+          "x": 0,
+          "y": 0,
+          "text": "[scrollbar {:0.2f}-{:0.2f}%]".format(
+            round(percentage_progress_start, 2), round(percentage_progress_end)
+          ),
+        }
+      )
+
+      tree = client.send(
+        "DOMSnapshot.captureSnapshot",
+        {"computedStyles": [], "includeDOMRects": True, "includePaintOrder": True},
+      )
+      strings	 	= tree["strings"]
+      document 	= tree["documents"][0]
+      nodes 		= document["nodes"]
+      backend_node_id = nodes["backendNodeId"]
+      attributes 	= nodes["attributes"]
+      node_value 	= nodes["nodeValue"]
+      parent 		= nodes["parentIndex"]
+      node_types 	= nodes["nodeType"]
+      node_names 	= nodes["nodeName"]
+      is_clickable = set(nodes["isClickable"]["index"])
+
+      text_value 			= nodes["textValue"]
+      text_value_index 	= text_value["index"]
+      text_value_values 	= text_value["value"]
+
+      input_value 		= nodes["inputValue"]
+      input_value_index 	= input_value["index"]
+      input_value_values 	= input_value["value"]
+
+      input_checked 		= nodes["inputChecked"]
+      layout 				= document["layout"]
+      layout_node_index 	= layout["nodeIndex"]
+      bounds 				= layout["bounds"]
+
+      cursor = 0
+      html_elements_text = []
+
+      child_nodes = {}
+      elements_in_view_port = []
+
+      anchor_ancestry = {"-1": (False, None)}
+      button_ancestry = {"-1": (False, None)}
+
+      def convert_name(node_name, has_click_handler):
+        if node_name == "a":
+          return "link"
+        if node_name == "input":
+          return "input"
+        if node_name == "img":
+          return "img"
+        if (
+          node_name == "button" or has_click_handler
+        ):  # found pages that needed this quirk
+          return "button"
+        else:
+          return "text"
+
+      def find_attributes(attributes, keys):
+        values = {}
+
+        for [key_index, value_index] in zip(*(iter(attributes),) * 2):
+          if value_index < 0:
+            continue
+          key = strings[key_index]
+          value = strings[value_index]
+
+          if key in keys:
+            values[key] = value
+            keys.remove(key)
+
+            if not keys:
+              return values
+
+        return values
+
+      def add_to_hash_tree(hash_tree, tag, node_id, node_name, parent_id):
+        parent_id_str = str(parent_id)
+        if not parent_id_str in hash_tree:
+          parent_name = strings[node_names[parent_id]].lower()
+          grand_parent_id = parent[parent_id]
+
+          add_to_hash_tree(
+            hash_tree, tag, parent_id, parent_name, grand_parent_id
+          )
+
+        is_parent_desc_anchor, anchor_id = hash_tree[parent_id_str]
+
+        # even if the anchor is nested in another anchor, we set the "root" for all descendants to be ::Self
+        if node_name == tag:
+          value = (True, node_id)
+        elif (
+          is_parent_desc_anchor
+        ):  # reuse the parent's anchor_id (which could be much higher in the tree)
+          value = (True, anchor_id)
+        else:
+          value = (
+            False,
+            None,
+          )  # not a descendant of an anchor, most likely it will become text, an interactive element or discarded
+
+        hash_tree[str(node_id)] = value
+
+        return value
+
+      for index, node_name_index in enumerate(node_names):
+        node_parent = parent[index]
+        node_name = strings[node_name_index].lower()
+
+        is_ancestor_of_anchor, anchor_id = add_to_hash_tree(
+          anchor_ancestry, "a", index, node_name, node_parent
+        )
+
+        is_ancestor_of_button, button_id = add_to_hash_tree(
+          button_ancestry, "button", index, node_name, node_parent
+        )
+
+        try:
+          cursor = layout_node_index.index(
+            index
+          )  # todo replace this with proper cursoring, ignoring the fact this is O(n^2) for the moment
+        except:
+          continue
+
+        if node_name in black_listed_elements:
+          continue
+
+        # [x, y, width, height] = bounds[cursor]
+        # x /= device_pixel_ratio
+        # y /= device_pixel_ratio
+        # width /= device_pixel_ratio
+        # height /= device_pixel_ratio
+
+        # elem_left_bound = x
+        # elem_top_bound = y
+        # elem_right_bound = x + width
+        # elem_lower_bound = y + height
+
+        # partially_is_in_viewport = (
+        # 	elem_left_bound < win_right_bound
+        # 	and elem_right_bound >= win_left_bound
+        # 	and elem_top_bound < win_lower_bound
+        # 	and elem_lower_bound >= win_upper_bound
+        # )
+
+        # if not partially_is_in_viewport:
+        # 	continue
+
+        meta_data = []
+
+        # inefficient to grab the same set of keys for kinds of objects but its fine for now
+        element_attributes = find_attributes(
+          attributes[index], ["type", "placeholder", "aria-label", "title", "alt"]
+        )
+
+        ancestor_exception = is_ancestor_of_anchor or is_ancestor_of_button
+        ancestor_node_key = (
+          None
+          if not ancestor_exception
+          else str(anchor_id)
+          if is_ancestor_of_anchor
+          else str(button_id)
+        )
+        ancestor_node = (
+          None
+          if not ancestor_exception
+          else child_nodes.setdefault(str(ancestor_node_key), [])
+        )
+
+        if node_name == "#text" and ancestor_exception:
+          text = strings[node_value[index]]
+          if text == "|" or text == "•":
+            continue
+          ancestor_node.append({
+            "type": "type", "value": text
+          })
+        else:
+          if (
+            node_name == "input" and element_attributes.get("type") == "submit"
+          ) or node_name == "button":
+            node_name = "button"
+            element_attributes.pop(
+              "type", None
+            )  # prevent [button ... (button)..]
+          
+          for key in element_attributes:
+            if ancestor_exception:
+              ancestor_node.append({
+                "type": "attribute",
+                "key":  key,
+                "value": element_attributes[key]
+              })
+            else:
+              meta_data.append(element_attributes[key])
+
+        element_node_value = None
+
+        if node_value[index] >= 0:
+          element_node_value = strings[node_value[index]]
+          if element_node_value == "|": #commonly used as a seperator, does not add much context - lets save ourselves some token space
+            continue
+        elif (
+          node_name == "input"
+          and index in input_value_index
+          and element_node_value is None
+        ):
+          node_input_text_index = input_value_index.index(index)
+          text_index = input_value_values[node_input_text_index]
+          if node_input_text_index >= 0 and text_index >= 0:
+            element_node_value = strings[text_index]
+
+        # remove redudant elements
+        if ancestor_exception and (node_name != "a" and node_name != "button"):
+          continue
+
+        elements_in_view_port.append(
+          {
+            "node_index": str(index),
+            "backend_node_id": backend_node_id[index],
+            "node_name": node_name,
+            "node_value": element_node_value,
+            "node_meta": meta_data,
+            "is_clickable": index in is_clickable,
+            # "origin_x": int(x),
+            # "origin_y": int(y),
+            # "center_x": int(x + (width / 2)),
+            # "center_y": int(y + (height / 2)),
+          }
+        )
+
+      # lets filter further to remove anything that does not hold any text nor has click handlers + merge text from leaf#text nodes with the parent
+      elements_of_interest= []
+      id_counter 			= 0
+
+      for element in elements_in_view_port:
+        node_index = element.get("node_index")
+        node_name = element.get("node_name")
+        node_value = element.get("node_value")
+        is_clickable = element.get("is_clickable")
+        origin_x = element.get("origin_x")
+        origin_y = element.get("origin_y")
+        center_x = element.get("center_x")
+        center_y = element.get("center_y")
+        meta_data = element.get("node_meta")
+
+        inner_text = f"{node_value} " if node_value else ""
+        meta = ""
+        
+        if node_index in child_nodes:
+          for child in child_nodes.get(node_index):
+            entry_type = child.get('type')
+            entry_value= child.get('value')
+
+            if entry_type == "attribute":
+              entry_key = child.get('key')
+              meta_data.append(f'{entry_key}="{entry_value}"')
+            else:
+              inner_text += f"{entry_value} "
+
+        if meta_data:
+          meta_string = " ".join(meta_data)
+          meta = f" {meta_string}"
+
+        if inner_text != "":
+          inner_text = f"{inner_text.strip()}"
+
+        converted_node_name = convert_name(node_name, is_clickable)
+
+        # not very elegant, more like a placeholder
+        if (
+          (converted_node_name != "button" or meta == "")
+          and converted_node_name != "link"
+          and converted_node_name != "input"
+          and converted_node_name != "img"
+          and converted_node_name != "textarea"
+        ) and inner_text.strip() == "":
+          continue
+
+        page_element_buffer[id_counter] = element
+
+        if inner_text != "": 
+          elements_of_interest.append(
+            f"""<{converted_node_name} id={id_counter}{meta}>{inner_text}</{converted_node_name}>"""
+          )
+        else:
+          elements_of_interest.append(
+            f"""<{converted_node_name} id={id_counter}{meta}/>"""
+          )
+        id_counter += 1
+
+      print("Parsing time: {:0.2f} seconds".format(time.time() - start))
+      return elements_of_interest
+
+def question_bot(url):
+  _crawler2 = Crawler2()
+
+  def qa_get_gpt_command(question, browser_content):
+    prompt = question_prompt_template
+    prompt = prompt.replace("$question", question)
+    full_response = []
+    if len(browser_content) > 5500:
+      for i in range(0, len(browser_content), 5500):
+        prompt = question_prompt_template
+        prompt = prompt.replace("$question", question)
+        # print('browser section', i, ': ', browser_content[i:i+5500])
+        prompt = prompt.replace("$browser_content", browser_content[i:i+5500])
+        # print('prompt section', i, ': ', prompt)
+        response = openai.Completion.create(model="text-davinci-003", prompt=prompt, top_p=1, temperature=0.3, best_of=1, n=1, max_tokens=250)
+        print("loop", i, response.choices[0].text)
+        full_response.append(response.choices[0].text)
+      return full_response
+    prompt = prompt.replace("$browser_content", browser_content)
+    response = openai.Completion.create(model="text-davinci-003", prompt=prompt, top_p=1, temperature=0.3, best_of=1, n=1, max_tokens=250)
+    return response.choices[0].text
+  
+  qa_gpt_cmd = ""
+  question = ""
+  print("\nWelcome to Q&A bot! What is your question?")
+  i = input()
+  if len(i) > 0:
+    question = i
+
+  try:
+    while True:
+      browser_content = "\n".join(_crawler2.crawl(url=url))
+      qa_gpt_cmd = qa_get_gpt_command(question, browser_content)
+
+      print("Question: " + question)
+      # print("----------------\n" + browser_content + "\n----------------\n")
+      if len(qa_gpt_cmd) > 0:
+        print("Suggested command: ", qa_gpt_cmd)
+      
+      command = input()
+  except KeyboardInterrupt:
+    print("\n[!] Ctrl+C detected, exiting gracefully.")
+    exit(0)
+
+def main():
+  load_dotenv(find_dotenv())
+  openai.api_key = os.getenv('openai_api_key')
+  # print("\nWelcome! What is your question?")
+  # Give me a list of 3 high schools in Fairfield County, CT
+  # i = input()
+  # prompt = i
+  # response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=5, n=1, max_tokens=250)
+  # print(response.choices[0].text)
+  # print('Waiting...')
+  # Find the staff directory for Fairfield County, CT and return the url for that page
+  # i2 = input()
+  # prompt2 = i2
+  # response2 = openai.Completion.create(model="text-davinci-003", prompt=prompt2, temperature=0.5, best_of=5, n=1, max_tokens=250)
+  # Give me the url for staff directory of brookfield high school, CT
+  # url = natbot()
+  # url = 'https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory'
+  url = 'https://www.stamfordhigh.org/connect/staff-directory'
+  question_bot(url)
+
+  # pipe the url into the Q&A page scraping version of natbot we have 
 
 def davinci(prompt):
 	prompt_template = """
