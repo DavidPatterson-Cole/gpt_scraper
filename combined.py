@@ -8,6 +8,7 @@ from dotenv import load_dotenv, find_dotenv
 from ast import literal_eval
 import pandas as pd
 import numpy as np
+import re
 
 quiet = True
 if len(argv) >= 2:
@@ -542,7 +543,7 @@ def natbot(natbot_prompt):
 		# placeholder while trying to get chatgpt to give a response
 		# response = _crawler.ask('who is King Louis 7th?')
 		# print('Response here: ', response)
-		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=10, n=3, max_tokens=50)
+		response = openai.Completion.create(model="text-davinci-003", prompt=prompt, temperature=0.5, best_of=1, n=1, max_tokens=50)
 		# bot = ChatGPT()
 		# response = bot.ask('is New York state richer than California?')
 		# print(response)
@@ -1096,23 +1097,44 @@ def question_bot(url):
         response = openai.Completion.create(model="text-davinci-003", prompt=prompt, top_p=1, temperature=0.3, best_of=1, n=1, max_tokens=250)
         # print("loop", i, response.choices[0].text)
         full_response.append(response.choices[0].text)
+      # _crawler2.client.detach()
+      # for context in _crawler2.browser.contexts:
+      #   context.close()
+      # _crawler2.browser.close()
+      # _crawler2.playwright.stop()
       return full_response
     prompt = prompt.replace("$browser_content", browser_content)
     response = openai.Completion.create(model="text-davinci-003", prompt=prompt, top_p=1, temperature=0.3, best_of=1, n=1, max_tokens=250)
+    # _crawler2.client.detach()
+    # for context in _crawler2.browser.contexts:
+    #   context.close()
+    # _crawler2.browser.close()
+    # _crawler2.playwright.stop()
     return response.choices[0].text
 
-  question = """
-  	Use the browser content to return the: name, title, email and phone number of all guidance counsellors. 
+  """
+    Answer format: Provide each detail in a separate line in the order: name, title, email, phone number. Space between each detail.
+    
+    If a detail like email address isn't shown in browser content, then put unknown in the output.
+  """
 
-	Answer format: Provide each detail in a separate line in the order: name, title, email, phone number. Space between each detail.
-	
-	If a detail like email address isn't shown in browser content, then put unknown in the output.
+  question = """
+  	Use the CURRENT BROWSER CONTENT to return the name and title, separated by commas, for all guidance counsellors listed in the CURRENT BROWSER CONTENT.
+
+    Each guidance counsellor should be on a separate line in the output.
+
+    If the answer is a null type answer for the CURRENT BROWSER CONTENT, then put "UNKNOWN" as the output for that section.
 	"""
 #   print("\nWelcome to Q&A bot! What is your question?")
 #   i = input()
 #   if len(i) > 0:
 #     question = i
   browser_content = "\n".join(_crawler2.crawl(url=url))
+  _crawler2.client.detach()
+  for context in _crawler2.browser.contexts:
+    context.close()
+  _crawler2.browser.close()
+  _crawler2.playwright.stop()
   return qa_get_gpt_command(question, browser_content)
 
 #   try:
@@ -1174,28 +1196,53 @@ def main():
   # prompt2 = i2
   # response2 = openai.Completion.create(model="text-davinci-003", prompt=prompt2, temperature=0.5, best_of=5, n=1, max_tokens=250)
   # Give me the url for staff directory of brookfield high school, CT
-  print("\nWelcome! Firing up the high school bot")
-  # high_school_prompt = "What are the names of 100 high schools in Fairfield County, CT?"
-  # high_schools = davinci(high_school_prompt)
-  # print(high_schools)
+#   print("\nWelcome! Firing up the high school bot")
+#   high_school_prompt = "What are the names of 100 high schools in Fairfield County, CT?"
+#   high_schools = davinci(high_school_prompt)
+#   print(high_schools)
 
-  high_schools = ['Amity Regional High School', 'Brien McMahon High School']
+#   # high_schools = ['Amity Regional High School', 'Brien McMahon High School']
 
 #   urls = []
-#   for high_school in high_schools[0:2]:
+#   for high_school in high_schools[0:4]:
 #     natbot_prompt = "Find the staff directory for " + high_school + " and then say ANSWER done"
 #     url = natbot(natbot_prompt)
 #     urls.append(url)
-#     time.sleep(10)
+# #     time.sleep(10)
 #   print('our url: ', urls)
-#   for url in urls:
-#      question_bot(url)
+
+  question_responses = []
+
+  urls = ['https://www.amityregion5.org/directory', 'https://bmhs.norwalkps.org/381082_4', 'https://www.bridgeportedu.net/Page/14081', 'https://bullard-havens.cttech.org/about/staff-directory/']
+  for url in urls:
+     question_responses.append(question_bot(url))
+  print(question_responses)
+
+  clean_question_responses = []
+  for page in question_responses:
+    if not isinstance(page, list):
+        if page == "UNKNOWN":
+          continue
+        print(page)
+        clean_question_responses.append(re.split(r'[,\n]' , page))
+        continue
+    for section in page:
+      if section == "UNKNOWN":
+        continue
+      else:
+        # clean_question_responses.append(section.split(','))
+        clean_question_responses.append(re.split(r'[,\n]' , section))
+  print(clean_question_responses)
+
+  # temp_url = 'https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory'
+  # question_bot(temp_url)
+
   # url = natbot()
-  url = 'https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory'
+  # url = 'https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory'
   # url = 'https://www.stamfordhigh.org/connect/staff-directory'
-  res = question_bot(url)
-  print("HERE IS THE RESULT", res)
-  convert_to_csv(res)
+  # res = question_bot(url)
+  # print("HERE IS THE RESULT", res)
+  # convert_to_csv(res)
 
 	# arr = ['Amity Regional High School', ' Brien McMahon High School', ' Brookfield High School', ' Bullard-Havens Technical High School', ' Central High School', ' Danbury High School', ' Darien High School', ' Fairfield Ludlowe High School', ' Fairfield Warde High School', ' Greenwich High School', ' Harding High School', ' Joel Barlow High School', ' Kolbe Cathedral High School', ' Lauralton Hall', ' Masuk High School', ' McMahon High School', ' New Canaan High School', ' New Fairfield High School', ' Newtown High School', ' Norwalk High School', ' Notre Dame Catholic High School', ' Platt Technical High School', ' Pomperaug High School', ' Ridgefield High School', ' Sacred Heart Academy', ' Shepaug Valley High School', ' Staples High School', ' Stratford High School', ' Trumbull High School', ' Weston High School', ' Wilton High School', ' Abbott Tech', ' Ansonia High School', ' Bassick High School', ' Bethel High School', ' Brookfield High School', ' Bunnell High School', ' Bullard-Havens Technical High School', ' Central High School', ' Cheney Tech', ' Danbury High School', ' Derby High School', ' East Catholic High School', ' East Haven High School', ' Fairfield Ludlowe High School', ' Fairfield Warde High School']
 	# arr2 = ['Answer: George Washington', ' John Adams', ' Thomas Jefferson', ' James Madison', ' James Monroe', ' John Quincy Adams', ' Andrew Jackson', ' Martin Van Buren', ' William Henry Harrison', ' John Tyler', ' James K. Polk', ' Zachary Taylor', ' Millard Fillmore', ' Franklin Pierce', ' James Buchanan', ' Abraham Lincoln', ' Andrew Johnson', ' Ulysses S. Grant', ' Rutherford B. Hayes', ' James A. Garfield', ' Chester A. Arthur', ' Grover Cleveland', ' Benjamin Harrison', ' William McKinley', ' Theodore Roosevelt', ' William Howard Taft', ' Woodrow Wilson', ' Warren G. Harding', ' Calvin Coolidge', ' Herbert Hoover', ' Franklin D. Roosevelt', ' Harry S. Truman', ' Dwight D. Eisenhower', ' John F. Kennedy', ' Lyndon B. Johnson', ' Richard Nixon', ' Gerald Ford', ' Jimmy Carter', ' Ronald Reagan', ' George H. W. Bush', ' Bill Clinton', ' George W. Bush', ' Barack Obama', ' Donald Trump']
