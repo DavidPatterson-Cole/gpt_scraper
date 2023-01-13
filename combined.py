@@ -609,11 +609,19 @@ def natbot(natbot_prompt):
 
 			# command = input()
 			if gpt_cmd.startswith("ANSWER"):
-				# _crawler.browser.close()
+				temp = _crawler.context
+				# _crawler.browser.exit()
+				_crawler.browser.close()
+				_crawler.client.detach()
+				# _crawler.browser.__class__.exit(_crawler)
+				# _crawler.browser.__class__.exit()
+				# _crawler.browser.__class__.exit
+				print(_crawler.browser.is_connected())
 				# exit(0)
 				# _crawler.browser.stop()
+				# _crawler.browser.__exit__
 				# _crawler.browser.__exit__()
-				_crawler.context.close()
+				# _crawler.context.close()
 				return _crawler.page.url
 			run_cmd(gpt_cmd)
 			# if command == "r" or command == "":
