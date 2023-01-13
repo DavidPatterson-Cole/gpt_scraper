@@ -6,6 +6,8 @@ import openai
 import os
 from dotenv import load_dotenv, find_dotenv
 from ast import literal_eval
+import pandas as pd
+import numpy as np
 
 quiet = True
 if len(argv) >= 2:
@@ -27,10 +29,10 @@ You can issue these commands:
 	CLICK X - click on a given element. You can only click on links, buttons, and inputs!
 	TYPE X "TEXT" - type the specified text into the input with id X
 	TYPESUBMIT X "TEXT" - same as TYPE above, except then it presses ENTER to submit the form
-  ANSWER "TEXT" - print out the specified text which answers the objective
+  	ANSWER "TEXT" - print out the specified text which answers the objective
 The format of the browser content is highly simplified; all formatting elements are stripped.
 Interactive elements such as links, inputs, buttons are represented like this:
-    <url>url</url>
+    	<url>url</url>
 		<link id=1>text</link>
 		<button id=2>text</button>
 		<input id=3>text</input>
@@ -146,14 +148,10 @@ class Crawler:
 	# session_div_id = "chatgpt-wrapper-session-data"
 
 	def __init__(self):
-		self.browser = (
-      sync_playwright()
-      .start()
-			.chromium.launch(headless=False)
-		)
-
-		self.context = self.browser.new_context()
-		self.page = self.context.new_page()
+		self.playwright_context = sync_playwright()
+		self.playwright = self.playwright_context.start()
+		self.browser = self.playwright.chromium.launch(headless=False)
+		self.page = self.browser.new_context().new_page()
 		self.url = ""
 
 	def go_to_page(self, url):
@@ -216,7 +214,7 @@ class Crawler:
 		win_height 			= page.evaluate("window.screen.height")
 		win_right_bound 	= win_left_bound + win_width
 		win_lower_bound 	= win_upper_bound + win_height
-		document_offset_height = page.evaluate("document.body.offsetHeight")
+		# document_offset_height = page.evaluate("document.body.offsetHeight")
 		document_scroll_height = page.evaluate("document.body.scrollHeight")
 
 		percentage_progress_start = 1
@@ -609,20 +607,14 @@ def natbot(natbot_prompt):
 
 			# command = input()
 			if gpt_cmd.startswith("ANSWER"):
-				temp = _crawler.context
-				# _crawler.browser.exit()
-				_crawler.browser.close()
+				tempurl = _crawler.page.url
 				_crawler.client.detach()
-				# _crawler.browser.__class__.exit(_crawler)
-				# _crawler.browser.__class__.exit()
-				# _crawler.browser.__class__.exit
-				print(_crawler.browser.is_connected())
-				# exit(0)
-				# _crawler.browser.stop()
-				# _crawler.browser.__exit__
-				# _crawler.browser.__exit__()
-				# _crawler.context.close()
-				return _crawler.page.url
+				for context in _crawler.browser.contexts:
+					context.close()
+				_crawler.browser.close()
+				_crawler.playwright.stop()
+
+				return tempurl
 			run_cmd(gpt_cmd)
 			# if command == "r" or command == "":
 			# 	run_cmd(gpt_cmd)
@@ -742,11 +734,15 @@ YOUR ANSWER:
 
 class Crawler2:
   def __init__(self):
-    self.browser = (
-      sync_playwright()
-      .start()
-		  .chromium.launch(headless=False)
-		)
+    self.playwright_context_manager = sync_playwright()
+    self.playwright = self.playwright_context_manager.start()
+    self.browser = self.playwright.chromium.launch(headless=False)
+
+    # self.browser = (
+    #   sync_playwright()
+    #   .start()
+	# 	  .chromium.launch(headless=False)
+	# 	)
     self.context = self.browser.new_context()
     self.page = self.context.new_page()
 
@@ -777,7 +773,7 @@ class Crawler2:
       win_height 			= page.evaluate("window.screen.height")
       win_right_bound 	= win_left_bound + win_width
       win_lower_bound 	= win_upper_bound + win_height
-      document_offset_height = page.evaluate("document.body.offsetHeight")
+    #   document_offset_height = page.evaluate("document.body.offsetHeight")
       document_scroll_height = page.evaluate("document.body.scrollHeight")
 
   #		percentage_progress_start = (win_upper_bound / document_scroll_height) * 100
@@ -1098,34 +1094,41 @@ def question_bot(url):
         prompt = prompt.replace("$browser_content", browser_content[i:i+5500])
         # print('prompt section', i, ': ', prompt)
         response = openai.Completion.create(model="text-davinci-003", prompt=prompt, top_p=1, temperature=0.3, best_of=1, n=1, max_tokens=250)
-        print("loop", i, response.choices[0].text)
+        # print("loop", i, response.choices[0].text)
         full_response.append(response.choices[0].text)
       return full_response
     prompt = prompt.replace("$browser_content", browser_content)
     response = openai.Completion.create(model="text-davinci-003", prompt=prompt, top_p=1, temperature=0.3, best_of=1, n=1, max_tokens=250)
     return response.choices[0].text
-  
-  qa_gpt_cmd = ""
-  question = ""
-  print("\nWelcome to Q&A bot! What is your question?")
-  i = input()
-  if len(i) > 0:
-    question = i
 
-  try:
-    while True:
-      browser_content = "\n".join(_crawler2.crawl(url=url))
-      qa_gpt_cmd = qa_get_gpt_command(question, browser_content)
+  question = """
+  	Use the browser content to return the: name, title, email and phone number of all guidance counsellors. 
 
-      print("Question: " + question)
-      # print("----------------\n" + browser_content + "\n----------------\n")
-      if len(qa_gpt_cmd) > 0:
-        print("Suggested command: ", qa_gpt_cmd)
+	Answer format: Provide each detail in a separate line in the order: name, title, email, phone number. Space between each detail.
+	
+	If a detail like email address isn't shown in browser content, then put unknown in the output.
+	"""
+#   print("\nWelcome to Q&A bot! What is your question?")
+#   i = input()
+#   if len(i) > 0:
+#     question = i
+  browser_content = "\n".join(_crawler2.crawl(url=url))
+  return qa_get_gpt_command(question, browser_content)
+
+#   try:
+#     while True:
+#       browser_content = "\n".join(_crawler2.crawl(url=url))
+#       qa_gpt_cmd = qa_get_gpt_command(question, browser_content)
+
+#       print("Question: " + question)
+#       # print("----------------\n" + browser_content + "\n----------------\n")
+#       if len(qa_gpt_cmd) > 0:
+#         print("Suggested command: ", qa_gpt_cmd)
       
-      command = input()
-  except KeyboardInterrupt:
-    print("\n[!] Ctrl+C detected, exiting gracefully.")
-    exit(0)
+#       command = input()
+#   except KeyboardInterrupt:
+#     print("\n[!] Ctrl+C detected, exiting gracefully.")
+#     exit(0)
 
 def davinci(prompt):
 	prompt_template = """
@@ -1151,6 +1154,11 @@ def davinci(prompt):
 	res = [x.strip() for x in res]
 	return res
 
+def convert_to_csv(data):
+	headers = ["name", "title", "email", "phone"]
+	arr = np.asarray(data)
+	pd.DataFrame(arr).to_csv('sample.csv', header  = headers) 
+
 def main():
   load_dotenv(find_dotenv())
   openai.api_key = os.getenv('openai_api_key')
@@ -1173,17 +1181,21 @@ def main():
 
   high_schools = ['Amity Regional High School', 'Brien McMahon High School']
 
-  url_array = []
-  for high_school in high_schools[0:2]:
-    natbot_prompt = "Find the staff directory for " + high_school + " and then say ANSWER done"
-    url = natbot(natbot_prompt)
-    url_array.append(url)
-    time.sleep(10)
-  print('our url: ', url_array)
+#   urls = []
+#   for high_school in high_schools[0:2]:
+#     natbot_prompt = "Find the staff directory for " + high_school + " and then say ANSWER done"
+#     url = natbot(natbot_prompt)
+#     urls.append(url)
+#     time.sleep(10)
+#   print('our url: ', urls)
+#   for url in urls:
+#      question_bot(url)
   # url = natbot()
-  # url = 'https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory'
+  url = 'https://www.brookfield.k12.ct.us/brookfield-high-school/pages/brookfield-high-school-staff-directory'
   # url = 'https://www.stamfordhigh.org/connect/staff-directory'
-  # question_bot(url)
+  res = question_bot(url)
+  print("HERE IS THE RESULT", res)
+  convert_to_csv(res)
 
 	# arr = ['Amity Regional High School', ' Brien McMahon High School', ' Brookfield High School', ' Bullard-Havens Technical High School', ' Central High School', ' Danbury High School', ' Darien High School', ' Fairfield Ludlowe High School', ' Fairfield Warde High School', ' Greenwich High School', ' Harding High School', ' Joel Barlow High School', ' Kolbe Cathedral High School', ' Lauralton Hall', ' Masuk High School', ' McMahon High School', ' New Canaan High School', ' New Fairfield High School', ' Newtown High School', ' Norwalk High School', ' Notre Dame Catholic High School', ' Platt Technical High School', ' Pomperaug High School', ' Ridgefield High School', ' Sacred Heart Academy', ' Shepaug Valley High School', ' Staples High School', ' Stratford High School', ' Trumbull High School', ' Weston High School', ' Wilton High School', ' Abbott Tech', ' Ansonia High School', ' Bassick High School', ' Bethel High School', ' Brookfield High School', ' Bunnell High School', ' Bullard-Havens Technical High School', ' Central High School', ' Cheney Tech', ' Danbury High School', ' Derby High School', ' East Catholic High School', ' East Haven High School', ' Fairfield Ludlowe High School', ' Fairfield Warde High School']
 	# arr2 = ['Answer: George Washington', ' John Adams', ' Thomas Jefferson', ' James Madison', ' James Monroe', ' John Quincy Adams', ' Andrew Jackson', ' Martin Van Buren', ' William Henry Harrison', ' John Tyler', ' James K. Polk', ' Zachary Taylor', ' Millard Fillmore', ' Franklin Pierce', ' James Buchanan', ' Abraham Lincoln', ' Andrew Johnson', ' Ulysses S. Grant', ' Rutherford B. Hayes', ' James A. Garfield', ' Chester A. Arthur', ' Grover Cleveland', ' Benjamin Harrison', ' William McKinley', ' Theodore Roosevelt', ' William Howard Taft', ' Woodrow Wilson', ' Warren G. Harding', ' Calvin Coolidge', ' Herbert Hoover', ' Franklin D. Roosevelt', ' Harry S. Truman', ' Dwight D. Eisenhower', ' John F. Kennedy', ' Lyndon B. Johnson', ' Richard Nixon', ' Gerald Ford', ' Jimmy Carter', ' Ronald Reagan', ' George H. W. Bush', ' Bill Clinton', ' George W. Bush', ' Barack Obama', ' Donald Trump']
